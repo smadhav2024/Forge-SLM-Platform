@@ -10,7 +10,7 @@ from app.database import get_db, AsyncSessionLocal
 from app.models import Message, Model
 from app.rag_worker import embedding_model
 from app.docker_manager import get_or_start_container
-from app.auth_utils import get_user_from_smart_token
+from app.auth_utils import get_current_user
 
 router = APIRouter(prefix="/v1", tags=["API Gateway"])
 
@@ -98,7 +98,7 @@ async def stream_generator(llama_url: str, payload: dict, conversation_id: int |
 async def chat_completions(
     request: ChatCompletionRequest, 
     db: AsyncSession = Depends(get_db),
-    user_id: int = Depends(get_user_from_smart_token) # <-- Enforce authentication on entry point
+    user_id: int = Depends(get_current_user)
 ):
     """OpenAI-compatible multi-tenant gateway URL supporting streaming and non-streaming modes."""
     base_path = "storage/models/tinyllama.gguf"

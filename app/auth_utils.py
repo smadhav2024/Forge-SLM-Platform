@@ -6,11 +6,6 @@ import jwt
 
 import secrets
 import hashlib
-from fastapi.security import OAuth2PasswordBearer
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
-from app.database import get_db
-from app.models import ApiKey
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
@@ -19,8 +14,6 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 SECRET_KEY = os.getenv("JWT_SECRET_KEY", "super-secret-localized-key-change-me")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60
-
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
 
 security = HTTPBearer()
 
@@ -67,29 +60,3 @@ def generate_api_key():
     key_hash = hashlib.sha256(raw_key.encode()).hexdigest()
     display_prefix = raw_key[:12] + "..."
     return raw_key, key_hash, display_prefix
-
-async def get_user_from_smart_token(
-    token: str = Depends(oauth2_scheme), 
-    db: AsyncSession = Depends(get_db)
-) -> int:
-    # Path A: It's an API Key
-    if token.startswith("sk-"):
-        incoming_hash = hashlib.sha256(token.encode()).hexdigest()
-        sql = select(ApiKey).where(ApiKey.key_hash == incoming_hash, ApiKey.is_active == True)
-        result = await db.execute(sql)
-        api_key_record = result.scalars().first()
-        
-        if not api_key_record:
-            raise HTTPException(status_code=401, detail="Invalid or revoked API Key.")
-        return api_key_record.user_id
-
-    # Path B: It's a JWT (Handle it inline cleanly)
-    else:
-        try:
-            payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-            user_id: int = payload.get("sub")
-            if user_id is None:
-                raise HTTPException(status_code=401, detail="Invalid token payload.")
-            return int(user_id)
-        except jwt.PyJWTError:
-            raise HTTPException(status_code=401, detail="Could not validate secure identity signatures.")
