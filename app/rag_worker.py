@@ -1,14 +1,15 @@
 import os
+import fitz  # PyMuPDF
 from fastembed import TextEmbedding
+from docx import Document as DocxDocument
 from app.database import AsyncSessionLocal
 from app.models import DocumentVector
 
-# Initialize the embedding model globally so it loads into memory once.
-# This specific model natively outputs the exact 384 dimensions specified in your DB schema.
+# Initialize the embedding model globally
 embedding_model = TextEmbedding(model_name="sentence-transformers/all-MiniLM-L6-v2")
 
 def chunk_text(text: str, chunk_size: int = 500, overlap: int = 50):
-    """Splits text into precise fragments with overlapping windows to preserve context."""
+    """Splits text into precise fragments with overlapping windows."""
     chunks = []
     start = 0
     text_length = len(text)
@@ -20,20 +21,51 @@ def chunk_text(text: str, chunk_size: int = 500, overlap: int = 50):
         
     return chunks
 
+def extract_text(file_path: str) -> str:
+    """Extracts text robustly by checking file signatures (magic bytes) instead of extensions."""
+    raw_text = ""
+    
+    # Read the first 4 bytes to definitively identify the actual file format
+    with open(file_path, "rb") as f:
+        header = f.read(4)
+        
+    if header == b"%PDF":
+        # It is definitively a PDF. Force it through PyMuPDF.
+        doc = fitz.open(file_path)
+        for page in doc:
+            text = page.get_text("text")
+            if text:
+                raw_text += text + "\n"
+        doc.close()
+        
+    elif header.startswith(b"PK"):
+        # ZIP signature, which means it's a DOCX file.
+        doc = DocxDocument(file_path)
+        raw_text = "\n".join([paragraph.text for paragraph in doc.paragraphs])
+        
+    else:
+        # Fallback to plain text
+        with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+            raw_text = f.read()
+
+    # Clean any stray null bytes to protect PostgreSQL
+    return raw_text.replace("\x00", "")
+
 async def process_document_task(conversation_id: int, file_path: str):
     """Background worker that processes the document asynchronously."""
     try:
-        # 1. Read the raw text
-        with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
-            content = f.read()
+        # THE FIX: We MUST call extract_text here, NOT f.read()
+        content = extract_text(file_path)
+        
+        if not content.strip():
+            print(f"SYSTEM WARNING: No text could be extracted from {file_path}")
+            return
 
-        # 2. Chunk into overlapping fragments
+        # Chunk and embed
         text_chunks = chunk_text(content)
-
-        # 3. Generate CPU-bound 384-dimensional vectors
         embeddings = list(embedding_model.embed(text_chunks))
 
-        # 4. Save directly into the specialized vector database table
+        # Save to PostgreSQL
         async with AsyncSessionLocal() as db:
             for chunk, emb in zip(text_chunks, embeddings):
                 doc_vec = DocumentVector(
@@ -44,8 +76,12 @@ async def process_document_task(conversation_id: int, file_path: str):
                 db.add(doc_vec)
             
             await db.commit()
+            print(f"SYSTEM: Successfully embedded {len(text_chunks)} clean text chunks for Conv #{conversation_id}")
     
+    except Exception as e:
+        print(f"SYSTEM: RAG Worker Error on Conv #{conversation_id}: {str(e)}")
+        
     finally:
-        # 5. Guaranteed cleanup: Delete the ephemeral RAG file to prevent storage bloat
+        # Cleanup ephemeral file
         if os.path.exists(file_path):
             os.remove(file_path)
