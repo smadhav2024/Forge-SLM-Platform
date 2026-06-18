@@ -3,8 +3,10 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, text
 from app.database import get_db
+from pydantic import BaseModel
 from app.models import Message # Assuming Message tracks conversation_id and user_id via relationships
 from app.auth_utils import get_current_user
+from app.models import Conversation
 
 router = APIRouter(prefix="/conversations", tags=["Workspace Conversations"])
 
@@ -55,3 +57,31 @@ async def get_conversation_history(
         }
         for msg in messages
     ]
+
+# The expected JSON payload from the frontend
+class CreateConversationRequest(BaseModel):
+    model_id: int | None = None
+    session_title: str = "New Chat"
+
+@router.post("/")
+async def create_conversation(
+    request: CreateConversationRequest,
+    db: AsyncSession = Depends(get_db),
+    user_id: int = Depends(get_current_user)
+):
+    """Initializes a new workspace session and returns the official DB ID."""
+    new_conv = Conversation(
+        user_id=user_id,
+        model_id=request.model_id,
+        session_title=request.session_title
+    )
+    
+    db.add(new_conv)
+    await db.commit()
+    await db.refresh(new_conv) # Refreshes the object to grab the auto-incremented ID
+    
+    return {
+        "id": new_conv.id, 
+        "title": new_conv.session_title, 
+        "model_id": new_conv.model_id
+    }
