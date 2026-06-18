@@ -2,12 +2,14 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 import docker
 
-from app.routes import auth, training, datasets, inference, api_keys, conversations, documents 
+from app.routes import auth, training, datasets, inference, api_keys, conversations, documents
+from app.seeder import seed_system_models
 
 # Define the cleanup lifecycle
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup: Do nothing, scale-to-zero memory is naturally empty.
+    await seed_system_models()
     yield
     # Shutdown: Clean up all dynamic containers spawned by this platform
     try:

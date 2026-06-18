@@ -4,7 +4,7 @@ import asyncio
 import aiofiles
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, or_
 from sse_starlette.sse import EventSourceResponse
 from app.database import get_db
 from app.models import Model, Dataset
@@ -25,8 +25,13 @@ SUPPORTED_MODELS = {
 
 @router.get("/")
 async def list_models(db: AsyncSession = Depends(get_db), user_id: int = Depends(get_current_user)):
-    """Returns all models owned by the user for the frontend dashboard."""
-    sql = select(Model).where(Model.user_id == user_id).order_by(Model.id.desc())
+    """Returns System Base Models + User's Custom Fine-Tunes."""
+    
+    # Give me models where user_id is mine OR where it's a system base model
+    sql = select(Model).where(
+        or_(Model.user_id == user_id, Model.is_base_model == True)
+    ).order_by(Model.id.asc())
+    
     result = await db.execute(sql)
     models = result.scalars().all()
     
@@ -35,7 +40,7 @@ async def list_models(db: AsyncSession = Depends(get_db), user_id: int = Depends
             "id": m.id,
             "display_name": m.display_name,
             "status": m.status,
-            "base_model": "TinyLlama" if "tiny" in getattr(m, "base_model_path", "").lower() else "Unknown",
+            "is_base_model": m.is_base_model,
             "created_at": m.created_at
         }
         for m in models

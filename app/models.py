@@ -37,11 +37,13 @@ class Model(Base):
     __tablename__ = "models"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=True) 
     display_name = Column(String, nullable=False)
     base_model_path = Column(String, nullable=False)
     adapter_path = Column(String, nullable=True)
     status = Column(String, default="PENDING", nullable=False)
+    
+    is_base_model = Column(Boolean, default=False, nullable=False) 
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
     user = relationship("User", back_populates="models")
