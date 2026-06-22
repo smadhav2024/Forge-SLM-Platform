@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { backendFetch, backendFetchJson, BackendError } from "@/lib/api/backend";
+import { backendFetch, BackendError } from "@/lib/api/backend";
 import { getSessionToken } from "@/lib/api/session";
 import { proxyAuthenticatedGet } from "@/lib/api/proxy-helpers";
 import type { DatasetSummary } from "@/types/api";
@@ -14,18 +14,28 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ message: "Not authenticated" }, { status: 401 });
   }
 
-  const formData = await req.formData();
-  const file = formData.get("file") as File;
-  const filename = formData.get("filename") as string;
-
-  if (!file || !filename) {
-    return NextResponse.json({ message: "File and filename are required." }, { status: 400 });
+  let formData: FormData;
+  try {
+    formData = await req.formData();
+  } catch {
+    return NextResponse.json({ message: "Invalid upload form." }, { status: 400 });
   }
 
-  // Rebuild a fresh FormData — avoids multipart boundary corruption
-  // when forwarding a parsed FormData through undici/fetch
+  const file = formData.get("file");
+  const filenameValue = formData.get("filename");
+  const filename = typeof filenameValue === "string" ? filenameValue.trim() : "";
+
+  if (!(file instanceof File) || !filename) {
+    return NextResponse.json(
+      { message: "File and filename are required." },
+      { status: 400 }
+    );
+  }
+
+  // Rebuild fresh FormData — forwarding a parsed FormData directly
+  // corrupts the multipart boundary in Node's fetch implementation
   const freshForm = new FormData();
-  freshForm.append("file", file);
+  freshForm.append("file", file, file.name);
   freshForm.append("filename", filename);
 
   try {
@@ -38,10 +48,13 @@ export async function POST(req: NextRequest) {
     const data = await upstream.json();
 
     if (!upstream.ok) {
-      return NextResponse.json(
-        { message: data?.detail?.[0]?.msg ?? data?.message ?? "Upload failed" },
-        { status: upstream.status }
-      );
+      // Surface JSONL validation errors from the backend's 422 detail
+      const detail = data?.detail;
+      const message =
+        typeof detail === "string"
+          ? detail
+          : detail?.message ?? "Upload failed";
+      return NextResponse.json({ message }, { status: upstream.status });
     }
 
     return NextResponse.json(data, { status: upstream.status });

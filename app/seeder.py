@@ -25,10 +25,15 @@ async def seed_system_models():
                     user_id=None, # Owned by the system!
                     display_name=config["display_name"],
                     base_model_path=config["gguf_path"],
-                    status="ready", # Base models are instantly ready to chat
+                    status="READY", # Base models are instantly ready to chat
                     is_base_model=True
                 )
                 db.add(system_model)
                 print(f"SYSTEM: Registered base model -> {config['display_name']}")
+            elif existing_model.status != "READY":
+                # Older seeds used lowercase "ready", while the rest of the
+                # application uses uppercase status values. Repair those rows
+                # on startup so existing installations are upgraded too.
+                existing_model.status = "READY"
                 
         await db.commit()

@@ -38,15 +38,17 @@ export function UploadDatasetDialog({
   };
 
   const handleSubmit = () => {
-    if (!file) return;
+    const displayName = filename.trim();
+    if (!file || !displayName) return;
 
     upload.mutate(
-      { file, filename: filename.trim() },
+      { file, filename: displayName },
       {
         onSuccess: () => {
-          toast.success(`"${filename}" uploaded successfully.`);
+          toast.success(`"${displayName}" uploaded successfully.`);
           onOpenChange(false);
           setFile(null);
+          setFilename("");
         },
         onError: (err) => {
           // Surface 422 validation detail from backend

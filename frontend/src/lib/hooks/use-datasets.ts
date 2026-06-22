@@ -23,7 +23,6 @@ export function useUploadDataset() {
       form.append("filename", filename);
       return fetch("/api/datasets", { method: "POST", body: form }).then(
         async (res) => {
-            console.log(res.body)
           if (!res.ok) {
             const err = await res.json();
             throw new Error(err.message ?? "Upload failed");

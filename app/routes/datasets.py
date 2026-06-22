@@ -1,7 +1,9 @@
 import os
 import json
+from pathlib import Path
+from uuid import uuid4
 import aiofiles
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
@@ -13,14 +15,19 @@ router = APIRouter(prefix="/datasets", tags=["Dataset Management"])
 
 @router.post("/")
 async def upload_dataset(
-    filename: str,
+    filename: str = Form(...),
     file: UploadFile = File(...),
     db: AsyncSession = Depends(get_db),
     user_id: int = Depends(get_current_user)
 ):
     """Uploads, validates, and registers a fine-tuning dataset."""
-    if not file.filename.endswith(".jsonl"):
+    original_filename = Path(file.filename or "").name
+    if not original_filename.lower().endswith(".jsonl"):
         raise HTTPException(status_code=400, detail="Only .jsonl files are accepted.")
+
+    display_name = filename.strip()
+    if not display_name:
+        raise HTTPException(status_code=400, detail="Dataset name is required.")
 
     # 1. Read the file into memory for synchronous validation
     content = await file.read()
@@ -31,12 +38,15 @@ async def upload_dataset(
 
     lines = text_content.splitlines()
     malformed_rows = []
+    row_count = 0
 
     # 2. Validate structural compliance line-by-line
     for i, line in enumerate(lines):
         line = line.strip()
         if not line:
             continue
+
+        row_count += 1
             
         try:
             data = json.loads(line)
@@ -47,7 +57,7 @@ async def upload_dataset(
                 continue
                 
             for msg in data["messages"]:
-                if "role" not in msg or "content" not in msg:
+                if not isinstance(msg, dict) or "role" not in msg or "content" not in msg:
                     malformed_rows.append({"line": i + 1, "error": "A message is missing 'role' or 'content'."})
                     break
                     
@@ -55,6 +65,9 @@ async def upload_dataset(
             malformed_rows.append({"line": i + 1, "error": "Invalid JSON syntax."})
 
     # 3. Halt Execution and Return 422 if malformed
+    if not row_count:
+        raise HTTPException(status_code=422, detail="Dataset must contain at least one JSONL row.")
+
     if malformed_rows:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -63,18 +76,30 @@ async def upload_dataset(
 
     # 4. Save to Disk safely now that it is validated
     os.makedirs("storage/datasets", exist_ok=True)
-    file_path = f"storage/datasets/user_{user_id}_{file.filename}"
+    stored_filename = f"user_{user_id}_{uuid4().hex}_{original_filename}"
+    file_path = str(Path("storage/datasets") / stored_filename)
     
     async with aiofiles.open(file_path, "w", encoding="utf-8") as out_file:
         await out_file.write(text_content)
 
     # 5. Record in Database
-    new_dataset = Dataset(user_id=user_id, filename=filename, file_path=file_path)
+    new_dataset = Dataset(
+        user_id=user_id,
+        filename=display_name,
+        file_path=file_path,
+        row_count=row_count,
+    )
     db.add(new_dataset)
     await db.commit()
     await db.refresh(new_dataset)
 
-    return {"status": "Dataset Registered", "dataset_id": new_dataset.id, "file_path": file_path}
+    return {
+        "id": new_dataset.id,
+        "filename": new_dataset.filename,
+        "file_path": new_dataset.file_path,
+        "row_count": new_dataset.row_count,
+        "uploaded_at": new_dataset.uploaded_at,
+    }
 
 @router.get("/")
 async def list_datasets(db: AsyncSession = Depends(get_db), user_id: int = Depends(get_current_user)):
@@ -82,4 +107,13 @@ async def list_datasets(db: AsyncSession = Depends(get_db), user_id: int = Depen
     sql = select(Dataset).where(Dataset.user_id == user_id)
     result = await db.execute(sql)
     datasets = result.scalars().all()
-    return [{"id": d.id, "file_path": d.file_path, "uploaded_at": d.uploaded_at} for d in datasets]
+    return [
+        {
+            "id": d.id,
+            "filename": d.filename,
+            "file_path": d.file_path,
+            "row_count": d.row_count,
+            "uploaded_at": d.uploaded_at,
+        }
+        for d in datasets
+    ]

@@ -4,7 +4,6 @@ import { useState } from "react";
 import { useDatasets } from "@/lib/hooks/use-datasets";
 import { UploadDatasetDialog } from "@/components/datasets/upload-dataset-dialog";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Plus, Database, FileText } from "lucide-react";
 
 export default function DatasetsPage() {
@@ -56,14 +55,11 @@ export default function DatasetsPage() {
                   <div>
                     <p className="text-sm font-medium">{dataset.filename}</p>
                     <p className="text-xs text-muted-foreground">
-                      {dataset.row_count ? `${dataset.row_count} rows · ` : ""}
-                      {new Date(dataset.created_at).toLocaleDateString()}
+                      {dataset.row_count ?? 0} rows ·{" "}
+                      {new Date(dataset.uploaded_at).toLocaleDateString()}
                     </p>
                   </div>
                 </div>
-                {dataset.status && (
-                  <Badge variant="secondary">{dataset.status}</Badge>
-                )}
               </div>
             ))}
           </div>

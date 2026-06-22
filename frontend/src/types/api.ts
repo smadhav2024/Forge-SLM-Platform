@@ -61,6 +61,7 @@ export interface ModelSummary {
   display_name: string;
   base_model_key: string;
   status: ModelStatus;
+  is_base_model?: boolean;
   created_at: string;
   dataset_id?: number;
 }
@@ -88,9 +89,9 @@ export interface CreateConversationRequest {
 export interface DatasetSummary {
   id: number;
   filename: string;
+  file_path: string;
+  uploaded_at: string;
   row_count?: number;
-  created_at: string;
-  status?: string;
 }
 
 export interface RegisterModelRequest {

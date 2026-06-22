@@ -11,7 +11,6 @@ import { TrainingLogViewer } from "@/components/models/training-log-viewer";
 import { useStartTraining } from "@/lib/hooks/use-model-actions";
 import { useDatasets } from "@/lib/hooks/use-datasets";
 import type { ModelSummary } from "@/types/api";
-import { DATASET_STORAGE_PREFIX } from "@/lib/config";
 
 export function ModelCard({ model }: { model: ModelSummary }) {
   const [showLogs, setShowLogs] = useState(false);
@@ -30,7 +29,7 @@ export function ModelCard({ model }: { model: ModelSummary }) {
     }
 
     startTraining.mutate(
-      { modelId: model.id, datasetPath: `${DATASET_STORAGE_PREFIX}/${dataset.filename}` },
+      { modelId: model.id, datasetPath: dataset.file_path },
       {
         onSuccess: () => {
           toast.success("Training started.");

@@ -104,20 +104,28 @@ async def chat_completions(
     base_path = "storage/models/tinyllama.gguf"
     adapter_path = None
     
-    # 1. Strict Multi-Tenant Access Validation
-    if request.model.startswith("model_"):
-        try:
-            model_id = int(request.model.split("_")[1])
-        except ValueError:
+    # 1. Strict Multi-Tenant Access Validation. The dashboard sends the DB id
+    # as a string; keep accepting the older ``model_<id>`` API format too.
+    model_identifier = request.model
+    if model_identifier.startswith("model_"):
+        model_identifier = model_identifier.removeprefix("model_")
+
+    try:
+        model_id = int(model_identifier)
+    except ValueError:
+        # Preserve the OpenAI-style alias for the default base model.
+        if request.model not in {"tinyllama", "default"}:
             raise HTTPException(status_code=400, detail="Invalid model identifier format.")
-            
+    else:
         model_record = await db.get(Model, model_id)
         
-        # Security Guardrail: Check ownership. If unauthorized, throw 404 to avoid resource enumeration leaks.
-        if not model_record or model_record.user_id != user_id:
+        # System base models are shared; fine-tunes remain private to their owner.
+        if not model_record or (
+            not model_record.is_base_model and model_record.user_id != user_id
+        ):
             raise HTTPException(status_code=404, detail="Model not found or unauthorized access.")
             
-        if model_record.status != "COMPLETED":
+        if model_record.status.upper() not in {"READY", "COMPLETED"}:
             raise HTTPException(status_code=400, detail=f"Requested model is unavailable. Status: {model_record.status}")
             
         base_path = model_record.base_model_path

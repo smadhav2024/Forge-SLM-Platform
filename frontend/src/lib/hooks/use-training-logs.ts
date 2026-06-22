@@ -9,10 +9,12 @@ export function useTrainingLogs(modelId: number | null, isTraining: boolean) {
   useEffect(() => {
     if (!modelId || !isTraining) return;
 
-    setLogs([]);
-    setIsDone(false);
-
     const es = new EventSource(`/api/models/${modelId}/logs/stream`);
+
+    es.onopen = () => {
+      setLogs([]);
+      setIsDone(false);
+    };
 
     es.onmessage = (e) => {
       const line: string = e.data;

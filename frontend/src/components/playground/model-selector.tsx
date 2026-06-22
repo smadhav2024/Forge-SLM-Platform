@@ -26,11 +26,18 @@ export function ModelSelector({
       <option value="" disabled>
         {isLoading ? "Loading..." : models?.length ? "Select model" : "No models yet"}
       </option>
-      {models?.map((m) => (
-        <option key={m.id} value={String(m.id)} disabled={m.status !== "READY" && m.status !== "COMPLETED"}>
-          {m.display_name} {m.status === "TRAINING" ? "(training…)" : ""}
-        </option>
-      ))}
+      {models?.map((m) => {
+        // Be tolerant of records created before statuses were normalized to
+        // uppercase by the API.
+        const status = m.status.toUpperCase();
+        const isAvailable = status === "READY" || status === "COMPLETED";
+
+        return (
+          <option key={m.id} value={String(m.id)} disabled={!isAvailable}>
+            {m.display_name} {status === "TRAINING" ? "(training…)" : ""}
+          </option>
+        );
+      })}
     </select>
   );
 }

@@ -29,10 +29,6 @@ export function useChat({
   const [isUploadingDoc, setIsUploadingDoc] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
 
-  const appendMessage = useCallback((msg: Omit<ChatMessage, "clientId">) => {
-    setMessages((prev) => [...prev, { ...msg, clientId: crypto.randomUUID() }]);
-  }, []);
-
   const uploadDocuments = useCallback(async (convId: number, files: File[]) => {
     setIsUploadingDoc(true);
     try {

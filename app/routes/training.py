@@ -39,7 +39,7 @@ async def list_models(db: AsyncSession = Depends(get_db), user_id: int = Depends
         {
             "id": m.id,
             "display_name": m.display_name,
-            "status": m.status,
+            "status": m.status.upper(),
             "is_base_model": m.is_base_model,
             "created_at": m.created_at
         }
