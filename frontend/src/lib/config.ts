@@ -4,5 +4,5 @@
  * the browser bundle.
  */
 export const API_URL = process.env.API_URL ?? "http://localhost:8000";
-
+export const DATASET_STORAGE_PREFIX = "storage/datasets";
 export const AUTH_COOKIE_NAME = "forge_session";

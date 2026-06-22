@@ -1,0 +1,70 @@
+"use client";
+
+import { useEffect, useRef } from "react";
+import { cn } from "@/lib/utils";
+import type { ChatMessage } from "@/lib/hooks/use-chat";
+
+function MessageBubble({ message, isLast, isStreaming }: {
+  message: ChatMessage;
+  isLast: boolean;
+  isStreaming: boolean;
+}) {
+  const isUser = message.role === "user";
+  const showCursor = isLast && !isUser && isStreaming;
+
+  return (
+    <div className={cn("flex gap-3 px-4 py-3", isUser && "flex-row-reverse")}>
+      <div className={cn(
+        "flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-medium",
+        isUser
+          ? "bg-brand text-brand-foreground"
+          : "bg-secondary text-secondary-foreground"
+      )}>
+        {isUser ? "U" : "AI"}
+      </div>
+
+      <div className={cn(
+        "max-w-[75%] rounded-lg px-3 py-2 text-sm leading-relaxed",
+        isUser
+          ? "bg-brand text-brand-foreground"
+          : "bg-secondary text-secondary-foreground"
+      )}>
+        <span className="whitespace-pre-wrap">{message.content}</span>
+        {showCursor && (
+          <span className="ml-0.5 inline-block h-4 w-0.5 animate-pulse bg-current align-middle" />
+        )}
+      </div>
+    </div>
+  );
+}
+
+export function MessageList({
+  messages,
+  isStreaming,
+}: {
+  messages: ChatMessage[];
+  isStreaming: boolean;
+}) {
+  const bottomRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll to bottom on new tokens
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
+  if (messages.length === 0) return null;
+
+  return (
+    <div className="flex flex-col py-4">
+      {messages.map((msg, i) => (
+        <MessageBubble
+          key={msg.clientId}
+          message={msg}
+          isLast={i === messages.length - 1}
+          isStreaming={isStreaming}
+        />
+      ))}
+      <div ref={bottomRef} />
+    </div>
+  );
+}

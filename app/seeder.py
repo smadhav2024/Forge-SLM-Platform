@@ -25,7 +25,7 @@ async def seed_system_models():
                     user_id=None, # Owned by the system!
                     display_name=config["display_name"],
                     base_model_path=config["gguf_path"],
-                    status="READY", # Base models are instantly ready to chat
+                    status="ready", # Base models are instantly ready to chat
                     is_base_model=True
                 )
                 db.add(system_model)

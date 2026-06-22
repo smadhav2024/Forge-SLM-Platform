@@ -1,5 +1,8 @@
+/**
+ * Mirrors the relevant subset of ChatCompletionRequest from openapi.json.
+ * Defaults match the backend schema's declared defaults exactly.
+ */
 export interface ChatConfig {
-  model: string;
   systemPrompt: string;
   temperature: number;
   topP: number;
@@ -7,10 +10,9 @@ export interface ChatConfig {
 }
 
 export const DEFAULT_CHAT_CONFIG: ChatConfig = {
-  model: "tinyllama",
   systemPrompt: "",
   temperature: 0.7,
-  topP: 1,
+  topP: 1.0,
   maxTokens: 512,
 };
 

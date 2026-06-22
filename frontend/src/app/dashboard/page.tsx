@@ -1,10 +1,10 @@
 import { PlaygroundShell } from "@/components/dashboard/playground-shell";
-import { PlaygroundWorkspace } from "@/components/playground/playground-workspace";
+import { ChatWorkspace } from "@/components/playground/chat-workspace";
 
-export default function DashboardPage() {
+export default function PlaygroundPage() {
   return (
     <PlaygroundShell>
-      <PlaygroundWorkspace />
+      <ChatWorkspace />
     </PlaygroundShell>
   );
 }

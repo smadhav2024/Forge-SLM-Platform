@@ -18,10 +18,10 @@ async def list_conversations(
     """Lists distinct active multi-turn chat sessions to populate the left sidebar."""
     # Grouping messages by conversation_id to extract unique active channels for this user
     sql = text("""
-        SELECT DISTINCT conversation_id 
-        FROM messages 
-        WHERE conversation_id IS NOT NULL 
-        ORDER BY conversation_id DESC
+        SELECT DISTINCT id 
+        FROM conversations 
+        WHERE id IS NOT NULL 
+        ORDER BY id DESC
     """)
     result = await db.execute(sql)
     conversations = [row[0] for row in result.fetchall()]

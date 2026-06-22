@@ -2,108 +2,97 @@
 
 import { PanelRightClose } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
-import { Slider } from "@/components/ui/slider";
 import { Textarea } from "@/components/ui/textarea";
+import { Slider } from "@/components/ui/slider";
+import { Input } from "@/components/ui/input";
+import { Separator } from "@/components/ui/separator";
 import { useChatConfig } from "@/components/playground/chat-config-context";
 import { CHAT_CONFIG_LIMITS } from "@/lib/chat-config";
 
 export function RightSidebar() {
   const { config, updateConfig, isSidebarOpen, setSidebarOpen } = useChatConfig();
+  const { temperature, topP, maxTokens } = CHAT_CONFIG_LIMITS;
 
-  if (!isSidebarOpen) return null;
+  if (!isSidebarOpen) {
+    return null;
+  }
 
   return (
-    <aside className="flex h-full w-80 shrink-0 flex-col gap-5 overflow-y-auto border-l bg-background p-4">
+    <aside className="flex h-full w-72 shrink-0 flex-col gap-5 overflow-y-auto border-l bg-sidebar p-4">
       <div className="flex items-center justify-between">
-        <div>
-          <p className="text-sm font-semibold">Playground settings</p>
-          <p className="text-xs text-muted-foreground">Generation controls for the active chat.</p>
-        </div>
-
+        <span className="text-sm font-medium">Generation settings</span>
         <Button
           variant="ghost"
           size="icon"
+          className="h-7 w-7"
           onClick={() => setSidebarOpen(false)}
-          aria-label="Collapse settings"
+          aria-label="Collapse settings panel"
         >
           <PanelRightClose className="h-4 w-4" />
         </Button>
       </div>
 
-      <div className="space-y-2">
-        <Label htmlFor="model">Model</Label>
-        <Input
-          id="model"
-          value={config.model}
-          onChange={(e) => updateConfig({ model: e.target.value })}
-          placeholder="tinyllama"
-        />
-      </div>
-
-      <Separator />
-
-      <div className="space-y-2">
-        <Label htmlFor="systemPrompt">System prompt</Label>
+      <div className="flex flex-col gap-2">
+        <Label htmlFor="system-prompt">System prompt</Label>
         <Textarea
-          id="systemPrompt"
+          id="system-prompt"
+          placeholder="You are a helpful assistant..."
           value={config.systemPrompt}
           onChange={(e) => updateConfig({ systemPrompt: e.target.value })}
-          placeholder="You are a helpful assistant..."
-          className="min-h-28 resize-none"
+          className="min-h-24 resize-none"
         />
       </div>
 
       <Separator />
 
-      <div className="space-y-2">
+      <div className="flex flex-col gap-2">
         <div className="flex items-center justify-between">
           <Label htmlFor="temperature">Temperature</Label>
-          <span className="text-xs text-muted-foreground">{config.temperature.toFixed(1)}</span>
+          <span className="text-xs text-muted-foreground">
+            {config.temperature.toFixed(1)}
+          </span>
         </div>
         <Slider
           id="temperature"
-          min={CHAT_CONFIG_LIMITS.temperature.min}
-          max={CHAT_CONFIG_LIMITS.temperature.max}
-          step={CHAT_CONFIG_LIMITS.temperature.step}
+          min={temperature.min}
+          max={temperature.max}
+          step={temperature.step}
           value={[config.temperature]}
-          onValueChange={([value]) => updateConfig({ temperature: value })}
+          onValueChange={([v]) => updateConfig({ temperature: v })}
         />
       </div>
 
-      <div className="space-y-2">
+      <div className="flex flex-col gap-2">
         <div className="flex items-center justify-between">
-          <Label htmlFor="topP">Top-p</Label>
-          <span className="text-xs text-muted-foreground">{config.topP.toFixed(2)}</span>
+          <Label htmlFor="top-p">Top-P</Label>
+          <span className="text-xs text-muted-foreground">
+            {config.topP.toFixed(2)}
+          </span>
         </div>
         <Slider
-          id="topP"
-          min={CHAT_CONFIG_LIMITS.topP.min}
-          max={CHAT_CONFIG_LIMITS.topP.max}
-          step={CHAT_CONFIG_LIMITS.topP.step}
+          id="top-p"
+          min={topP.min}
+          max={topP.max}
+          step={topP.step}
           value={[config.topP]}
-          onValueChange={([value]) => updateConfig({ topP: value })}
+          onValueChange={([v]) => updateConfig({ topP: v })}
         />
       </div>
 
-      <div className="space-y-2">
-        <Label htmlFor="maxTokens">Max tokens</Label>
+      <div className="flex flex-col gap-2">
+        <Label htmlFor="max-tokens">Max tokens</Label>
         <Input
-          id="maxTokens"
+          id="max-tokens"
           type="number"
-          min={CHAT_CONFIG_LIMITS.maxTokens.min}
-          max={CHAT_CONFIG_LIMITS.maxTokens.max}
+          min={maxTokens.min}
+          max={maxTokens.max}
           value={config.maxTokens}
           onChange={(e) => {
-            const next = Number(e.target.value);
-            if (!Number.isNaN(next)) {
+            const value = Number(e.target.value);
+            if (!Number.isNaN(value)) {
               updateConfig({
-                maxTokens: Math.max(
-                  CHAT_CONFIG_LIMITS.maxTokens.min,
-                  Math.min(CHAT_CONFIG_LIMITS.maxTokens.max, next)
-                ),
+                maxTokens: Math.min(maxTokens.max, Math.max(maxTokens.min, value)),
               });
             }
           }}

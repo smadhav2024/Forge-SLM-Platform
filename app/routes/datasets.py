@@ -13,6 +13,7 @@ router = APIRouter(prefix="/datasets", tags=["Dataset Management"])
 
 @router.post("/")
 async def upload_dataset(
+    filename: str,
     file: UploadFile = File(...),
     db: AsyncSession = Depends(get_db),
     user_id: int = Depends(get_current_user)
@@ -68,7 +69,7 @@ async def upload_dataset(
         await out_file.write(text_content)
 
     # 5. Record in Database
-    new_dataset = Dataset(user_id=user_id, file_path=file_path)
+    new_dataset = Dataset(user_id=user_id, filename=filename, file_path=file_path)
     db.add(new_dataset)
     await db.commit()
     await db.refresh(new_dataset)

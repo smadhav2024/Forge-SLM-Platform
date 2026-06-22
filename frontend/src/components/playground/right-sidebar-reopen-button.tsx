@@ -7,15 +7,17 @@ import { useChatConfig } from "@/components/playground/chat-config-context";
 export function RightSidebarReopenButton() {
   const { isSidebarOpen, setSidebarOpen } = useChatConfig();
 
-  if (isSidebarOpen) return null;
+  if (isSidebarOpen) {
+    return null;
+  }
 
   return (
     <Button
       variant="outline"
       size="icon"
-      className="absolute right-4 top-4 z-20 h-9 w-9"
+      className="absolute right-4 top-4 h-8 w-8"
       onClick={() => setSidebarOpen(true)}
-      aria-label="Open settings"
+      aria-label="Open settings panel"
     >
       <PanelRightOpen className="h-4 w-4" />
     </Button>

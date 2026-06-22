@@ -54,12 +54,7 @@ export interface ApiErrorShape {
  * a field name here propagates everywhere.
  */
 
-export type ModelStatus =
-  | "pending"
-  | "training"
-  | "completed"
-  | "failed"
-  | "ready";
+export type ModelStatus = "PENDING" | "TRAINING" | "COMPLETED" | "FAILED" | "READY";
 
 export interface ModelSummary {
   id: number;
@@ -71,7 +66,7 @@ export interface ModelSummary {
 }
 
 export interface ConversationSummary {
-  id: number;
+  conversation_id: number;
   title: string;
   model_id?: number;
   updated_at: string;
@@ -83,4 +78,23 @@ export interface ConversationMessage {
   role: "user" | "assistant" | "system";
   content: string;
   created_at?: string;
+}
+
+export interface CreateConversationRequest {
+  model_id: number;
+  session_title: string;
+}
+
+export interface DatasetSummary {
+  id: number;
+  filename: string;
+  row_count?: number;
+  created_at: string;
+  status?: string;
+}
+
+export interface RegisterModelRequest {
+  display_name: string;
+  dataset_id: number;
+  base_model_key?: string;
 }

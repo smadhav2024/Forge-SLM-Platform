@@ -22,6 +22,7 @@ export function LeftSidebar({
   onCreateDataset: () => void;
 }) {
   const conversations = useConversations();
+  console.log(conversations);
   const models = useModels();
 
   return (
@@ -58,8 +59,8 @@ export function LeftSidebar({
             )}
             {conversations.data?.map((conv) => (
               <SidebarItem
-                key={conv.id}
-                href={`/dashboard?conversation=${conv.id}`}
+                key={conv.conversation_id}
+                href={`/dashboard?conversation=${conv.conversation_id}`}
                 label={conv.title || "Untitled chat"}
                 icon={<MessageSquare className="h-3.5 w-3.5 shrink-0" />}
               />
