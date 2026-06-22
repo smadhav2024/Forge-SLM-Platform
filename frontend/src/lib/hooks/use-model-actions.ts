@@ -45,3 +45,53 @@ export function useStartTraining() {
     },
   });
 }
+
+export function useDeleteModel() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: number) =>
+      fetch(`/api/models/${id}`, { method: "DELETE" }).then(async (res) => {
+        if (!res.ok && res.status !== 204) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.message ?? "Delete failed");
+        }
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: modelsQueryKey });
+    },
+  });
+}
+
+export function useUploadModel() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      file,
+      displayName,
+      baseModelKey,
+    }: {
+      file: File;
+      displayName: string;
+      baseModelKey: string;
+    }) => {
+      const form = new FormData();
+      form.append("file", file);
+      form.append("display_name", displayName);
+      form.append("base_model_key", baseModelKey);
+      return fetch("/api/models/upload", { method: "POST", body: form }).then(
+        async (res) => {
+          if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            throw new Error(err.message ?? "Upload failed");
+          }
+          return res.json();
+        },
+      );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: modelsQueryKey });
+    },
+  });
+}

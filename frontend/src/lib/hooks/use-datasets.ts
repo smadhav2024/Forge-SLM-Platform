@@ -31,7 +31,23 @@ export function useUploadDataset() {
         },
       );
     },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: datasetsQueryKey });
+    },
+  });
+}
 
+export function useDeleteDataset() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: number) =>
+      fetch(`/api/datasets/${id}`, { method: "DELETE" }).then(async (res) => {
+        if (!res.ok && res.status !== 204) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.message ?? "Delete failed");
+        }
+      }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: datasetsQueryKey });
     },

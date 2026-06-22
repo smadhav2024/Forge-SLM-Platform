@@ -1,14 +1,40 @@
 "use client";
 
 import { useState } from "react";
-import { useDatasets } from "@/lib/hooks/use-datasets";
+import { useDatasets, useDeleteDataset } from "@/lib/hooks/use-datasets";
 import { UploadDatasetDialog } from "@/components/datasets/upload-dataset-dialog";
 import { Button } from "@/components/ui/button";
-import { Plus, Database, FileText } from "lucide-react";
+import { Plus, Database, FileText, X, Loader2 } from "lucide-react";
+import { toast } from "sonner";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 
 export default function DatasetsPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
   const { data: datasets, isLoading } = useDatasets();
+  const deleteDataset = useDeleteDataset();
+
+  const confirmingDataset = datasets?.find((d) => d.id === confirmDeleteId);
+
+  const handleConfirmDelete = () => {
+    if (confirmDeleteId == null) return;
+    deleteDataset.mutate(confirmDeleteId, {
+      onSuccess: () => {
+        toast.success("Dataset deleted.");
+        setConfirmDeleteId(null);
+      },
+      onError: (err) => {
+        toast.error(err.message);
+        setConfirmDeleteId(null);
+      },
+    });
+  };
 
   return (
     <div className="flex h-full flex-col">
@@ -48,7 +74,7 @@ export default function DatasetsPage() {
             {datasets.map((dataset) => (
               <div
                 key={dataset.id}
-                className="flex items-center justify-between rounded-lg border bg-card px-4 py-3"
+                className="group flex items-center justify-between rounded-lg border bg-card px-4 py-3 transition-colors hover:bg-muted/40"
               >
                 <div className="flex items-center gap-3">
                   <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
@@ -60,6 +86,14 @@ export default function DatasetsPage() {
                     </p>
                   </div>
                 </div>
+
+                <button
+                  onClick={() => setConfirmDeleteId(dataset.id)}
+                  className="rounded-md p-1.5 text-muted-foreground opacity-0 transition-opacity hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100 focus:opacity-100"
+                  aria-label={`Delete ${dataset.filename}`}
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
               </div>
             ))}
           </div>
@@ -67,6 +101,35 @@ export default function DatasetsPage() {
       </div>
 
       <UploadDatasetDialog open={dialogOpen} onOpenChange={setDialogOpen} />
+
+      {/* Delete confirmation dialog */}
+      <Dialog open={confirmDeleteId != null} onOpenChange={(o) => !o && setConfirmDeleteId(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Delete dataset?</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            <span className="font-medium text-foreground">{confirmingDataset?.filename}</span>{" "}
+            will be permanently removed. Models trained on this dataset will not be affected.
+          </p>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setConfirmDeleteId(null)}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleConfirmDelete}
+              disabled={deleteDataset.isPending}
+            >
+              {deleteDataset.isPending ? (
+                <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Deleting…</>
+              ) : (
+                "Delete"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

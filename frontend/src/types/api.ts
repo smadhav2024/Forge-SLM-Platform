@@ -62,8 +62,16 @@ export interface ModelSummary {
   base_model_key: string;
   status: ModelStatus;
   is_base_model?: boolean;
+  /** True when the model was directly uploaded by the user (not fine-tuned). */
+  is_uploaded?: boolean;
   created_at: string;
   dataset_id?: number;
+  /** Optional: backend may return the dataset filename inline. */
+  dataset_name?: string;
+  /** Optional parameter count e.g. "1.7B" */
+  parameter_count?: string;
+  /** Optional description */
+  description?: string;
 }
 
 export interface ConversationSummary {
