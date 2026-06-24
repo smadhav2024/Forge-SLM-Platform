@@ -1,6 +1,13 @@
 import Link from "next/link";
+import Image from "next/image";
+import { Tienne } from "next/font/google";
 import { Terminal, Shield, Zap, Cpu, ArrowRight, GitBranch, Lock, Activity } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
+
+const tienne = Tienne({
+  subsets: ["latin"],
+  weight: ["400", "700"],
+});
 
 export default function Landing() {
   return (
@@ -9,11 +16,17 @@ export default function Landing() {
       {/* Nav */}
       <nav className="sticky top-0 z-50 border-b bg-background/80 backdrop-blur-sm">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-          <div className="flex items-center gap-2">
-            <div className="flex h-7 w-7 items-center justify-center rounded-md bg-brand text-sm font-semibold text-brand-foreground">
-              F
+          <div className="flex items-center gap-3">
+            <div className="relative flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full">
+              <Image
+                src="/logo.png"
+                alt="Forge Logo"
+                fill
+                sizes="32px"
+                className="object-cover"
+              />
             </div>
-            <span className="text-sm font-semibold">Forge</span>
+            <span className={`${tienne.className} text-xl font-bold uppercase tracking-[0.15em]`}>Forge</span>
           </div>
           <div className="hidden items-center gap-6 sm:flex">
             <a href="#features" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Features</a>
@@ -36,10 +49,6 @@ export default function Landing() {
 
       {/* Hero */}
       <section className="relative mx-auto max-w-6xl px-6 pb-24 pt-28 text-center">
-        <div className="mb-6 inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs text-muted-foreground">
-          <span className="h-1.5 w-1.5 rounded-full bg-brand animate-pulse" />
-          Platform v1.0 — now in early access
-        </div>
 
         <h1 className="mb-6 text-5xl font-semibold tracking-tight sm:text-6xl md:text-7xl">
           Fine-tune, run, and chat with<br />
@@ -65,27 +74,6 @@ export default function Landing() {
           >
             Sign in to console
           </Link>
-        </div>
-
-        {/* Terminal preview */}
-        <div className="relative mx-auto mt-20 max-w-3xl rounded-xl border bg-card text-left shadow-sm">
-          <div className="flex items-center gap-1.5 border-b px-4 py-3">
-            <span className="h-2.5 w-2.5 rounded-full bg-destructive/60" />
-            <span className="h-2.5 w-2.5 rounded-full bg-amber-400/60" />
-            <span className="h-2.5 w-2.5 rounded-full bg-green-400/60" />
-            <span className="ml-4 text-xs text-muted-foreground">forge training log — model_26</span>
-          </div>
-          <div className="space-y-1 p-5 font-mono text-xs leading-relaxed text-muted-foreground">
-            <p><span className="text-brand">[08:14:02]</span> SYSTEM: Initializing LoRA fine-tuning pipeline...</p>
-            <p><span className="text-brand">[08:14:09]</span> SYSTEM: Loading tokenizer for TinyLlama/TinyLlama-1.1B-Chat-v1.0</p>
-            <p><span className="text-brand">[08:14:21]</span> SYSTEM: Applying LoRA adapters... target: [q_proj, v_proj]</p>
-            <p><span className="text-brand">[08:14:22]</span> SYSTEM: Trainable params: 2,097,152 / 1,100,048,640 (0.19%)</p>
-            <p><span className="text-brand">[08:14:23]</span> SYSTEM: Dataset tokenized: 1,069 examples.</p>
-            <p><span className="text-green-500">[08:16:44]</span> Step 12 | Loss: <span className="text-foreground">1.4821</span></p>
-            <p><span className="text-green-500">[08:19:01]</span> Step 24 | Loss: <span className="text-foreground">0.9134</span></p>
-            <p><span className="text-green-500">[08:21:33]</span> Step 36 | Loss: <span className="text-foreground">0.6247</span></p>
-            <p className="text-foreground"><span className="text-brand">[08:23:11]</span> SYSTEM: SUCCESS — adapter saved. Converting to GGUF...</p>
-          </div>
         </div>
       </section>
 
@@ -194,10 +182,6 @@ export default function Landing() {
       <footer className="border-t">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-6">
           <div className="flex items-center gap-2">
-            <div className="flex h-5 w-5 items-center justify-center rounded bg-brand text-[10px] font-bold text-brand-foreground">
-              F
-            </div>
-            <span className="text-xs text-muted-foreground">Forge</span>
           </div>
           <p className="text-xs text-muted-foreground">Self-hosted · Air-gapped · Open</p>
         </div>

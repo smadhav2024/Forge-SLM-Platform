@@ -27,8 +27,6 @@ export function ModelSelector({
 }: {
   value: string | "";
   onChange: (id: string) => void;
-  value: string | null;
-  onChange: (id: string | null) => void;
 }) {
   const { data: models, isLoading } = useModels();
 
@@ -38,8 +36,8 @@ export function ModelSelector({
   useEffect(() => {
     if (!models) return;
     const exists = models.some((m) => String(m.id) === String(value));
-    if (!exists && value !== null) {
-      onChange(null);
+    if (!exists && value !== "") {
+      onChange("");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [models]);
@@ -81,10 +79,7 @@ export function ModelSelector({
               {selectedModel.is_base_model ? (
                 <BrainCircuit className="h-4 w-4 text-primary/70 shrink-0" />
               ) : (
-                <div className="relative flex items-center justify-center shrink-0">
-                  <Sparkles className="h-4 w-4 text-accent-foreground/70" />
-                  <div className={cn("absolute -bottom-0.5 -right-0.5 h-2 w-2 rounded-full border border-background", getStatusInfo(selectedModel.status).dot)} />
-                </div>
+                <Sparkles className="h-4 w-4 text-accent-foreground/70 shrink-0" />
               )}
             </>
           ) : null}
@@ -162,7 +157,3 @@ export function ModelSelector({
     </Select>
   );
 }
-
-// Clear selection if the currently selected model no longer exists
-// (e.g., it was deleted). This keeps parent state in sync with available models.
-export default ModelSelector;

@@ -4,8 +4,10 @@ import socket
 import docker
 import httpx
 import asyncio
+import logging
 
 client = docker.from_env()
+logger = logging.getLogger(__name__)
 
 # Key: "base_path|adapter_path_or_none", Value: port int
 _active_fleet: dict[str, int] = {}

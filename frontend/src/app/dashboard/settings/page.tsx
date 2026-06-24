@@ -4,10 +4,14 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, User, Database, HardDrive, Settings, Key, ChevronRight, Save, Loader2, Eye, EyeOff, Copy, Check, Plus, Trash2 } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
+import { Tienne } from "next/font/google";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+
+const tienne = Tienne({ subsets: ["latin"], weight: ["400", "700"] });
 
 // ── sidebar nav items ──────────────────────────────────────────────────────────
 const NAV = [
@@ -20,7 +24,6 @@ const NAV = [
 
 type Tab = (typeof NAV)[number]["id"];
 
-// ── mock API key shape ─────────────────────────────────────────────────────────
 interface ApiKeyRow {
   id: string;
   name: string;
@@ -127,14 +130,14 @@ function StorageSection() {
   };
   return (
     <div className="flex flex-col gap-6">
-      <SectionCard title="Storage paths" description="Directories where Forge writes model adapters, dataset files, and training logs. Relative paths are resolved from the server working directory.">
+      <SectionCard title="Storage paths" description="Directories where Forge writes model adapters, dataset files, and training logs.">
         <div className="flex flex-col gap-4">
           {[
-            { label: "Datasets root",      value: "storage/datasets" },
-            { label: "Adapters root",      value: "storage/adapters" },
-            { label: "Uploaded models",    value: "storage/uploaded_models" },
-            { label: "Training logs",      value: "storage/logs" },
-            { label: "Base model GGUFs",   value: "storage/models" },
+            { label: "Datasets root",    value: "storage/datasets" },
+            { label: "Adapters root",    value: "storage/adapters" },
+            { label: "Uploaded models",  value: "storage/uploaded_models" },
+            { label: "Training logs",    value: "storage/logs" },
+            { label: "Base model GGUFs", value: "storage/models" },
           ].map((p) => (
             <Field key={p.label} label={p.label}>
               <Input defaultValue={p.value} className="font-mono text-xs" />
@@ -273,15 +276,7 @@ function GeneralSection() {
 
 // ── reusable primitives ────────────────────────────────────────────────────────
 
-function SectionCard({
-  title,
-  description,
-  children,
-}: {
-  title: string;
-  description: string;
-  children: React.ReactNode;
-}) {
+function SectionCard({ title, description, children }: { title: string; description: string; children: React.ReactNode }) {
   return (
     <div className="rounded-xl border bg-card p-6">
       <div className="mb-5 border-b pb-4">
@@ -293,15 +288,7 @@ function SectionCard({
   );
 }
 
-function Field({
-  label,
-  hint,
-  children,
-}: {
-  label: string;
-  hint?: string;
-  children: React.ReactNode;
-}) {
+function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
   return (
     <div className="flex flex-col gap-1.5">
       <Label className="text-xs">{label}</Label>
@@ -344,40 +331,44 @@ function SaveRow({ saving, onClick }: { saving: boolean; onClick: () => void }) 
 // ── page ───────────────────────────────────────────────────────────────────────
 
 const SECTION_LABELS: Record<Tab, string> = {
-  profile:   "Account",
-  models:    "Model preferences",
-  storage:   "Storage & paths",
+  profile:    "Account",
+  models:     "Model preferences",
+  storage:    "Storage & paths",
   "api-keys": "API keys",
-  general:   "General",
+  general:    "General",
 };
 
 export default function SettingsPage() {
   const [active, setActive] = useState<Tab>("profile");
 
   return (
-    // Full-screen layout that intentionally bypasses the DashboardShell sidebar
     <div className="flex h-screen flex-col overflow-hidden">
-      {/* Minimal header — back to dashboard + breadcrumb */}
+      {/* Header */}
       <header className="flex h-14 shrink-0 items-center justify-between border-b bg-background px-6">
+        {/* Breadcrumb — larger text */}
         <div className="flex items-center gap-3">
           <Link
             href="/dashboard"
-            className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+            className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
           >
-            <ArrowLeft className="h-3.5 w-3.5" />
+            <ArrowLeft className="h-4 w-4" />
             Dashboard
           </Link>
-          <ChevronRight className="h-3 w-3 text-muted-foreground/50" />
-          <span className="text-xs font-medium">Settings</span>
-          <ChevronRight className="h-3 w-3 text-muted-foreground/50" />
-          <span className="text-xs text-muted-foreground">{SECTION_LABELS[active]}</span>
+          <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50" />
+          <span className="text-sm font-semibold">Settings</span>
+          <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50" />
+          <span className="text-sm text-muted-foreground">{SECTION_LABELS[active]}</span>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="flex h-7 w-7 items-center justify-center rounded-md bg-brand text-sm font-semibold text-brand-foreground">
-            F
+
+        {/* Logo — same as navbar */}
+        <Link href="/dashboard" className="flex items-center gap-3">
+          <div className="relative flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full">
+            <Image src="/logo.png" alt="Forge Logo" fill sizes="32px" className="object-cover" />
           </div>
-          <span className="text-sm font-semibold">Forge</span>
-        </div>
+          <span className={`${tienne.className} text-xl font-bold uppercase tracking-[0.15em]`}>
+            Forge
+          </span>
+        </Link>
       </header>
 
       <div className="flex flex-1 overflow-hidden">
@@ -409,18 +400,18 @@ export default function SettingsPage() {
           <div className="mx-auto max-w-2xl">
             <h1 className="mb-1 text-lg font-semibold">{SECTION_LABELS[active]}</h1>
             <p className="mb-8 text-sm text-muted-foreground">
-              {active === "profile"    && "Manage your account credentials and personal information."}
-              {active === "models"     && "Configure default models and inference parameters for the playground."}
-              {active === "storage"    && "Control where Forge stores files on the server."}
-              {active === "api-keys"   && "Manage keys for the OpenAI-compatible /v1/chat/completions gateway."}
-              {active === "general"    && "Appearance and account-level actions."}
+              {active === "profile"  && "Manage your account credentials and personal information."}
+              {active === "models"   && "Configure default models and inference parameters for the playground."}
+              {active === "storage"  && "Control where Forge stores files on the server."}
+              {active === "api-keys" && "Manage keys for the OpenAI-compatible /v1/chat/completions gateway."}
+              {active === "general"  && "Appearance and account-level actions."}
             </p>
 
-            {active === "profile"    && <ProfileSection />}
-            {active === "models"     && <ModelPrefsSection />}
-            {active === "storage"    && <StorageSection />}
-            {active === "api-keys"   && <ApiKeysSection />}
-            {active === "general"    && <GeneralSection />}
+            {active === "profile"  && <ProfileSection />}
+            {active === "models"   && <ModelPrefsSection />}
+            {active === "storage"  && <StorageSection />}
+            {active === "api-keys" && <ApiKeysSection />}
+            {active === "general"  && <GeneralSection />}
           </div>
         </main>
       </div>
