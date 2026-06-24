@@ -22,14 +22,17 @@ def get_free_port() -> int:
 async def wait_for_health(port: int, timeout: int = 600) -> bool:
     url = f"http://127.0.0.1:{port}/health"
     async with httpx.AsyncClient() as http_client:
-        for _ in range(timeout):
+        for attempt in range(timeout):
             try:
                 response = await http_client.get(url)
                 if response.status_code == 200:
+                    logger.info(f"Container on port {port} is healthy")
                     return True
-            except httpx.RequestError:
-                pass
+            except httpx.RequestError as e:
+                if attempt % 10 == 0:  # Log every 10 attempts to avoid spam
+                    logger.debug(f"Health check attempt {attempt}/{timeout} for port {port}: {e}")
             await asyncio.sleep(1)
+    logger.error(f"Container on port {port} failed health check after {timeout}s")
     return False
 
 
@@ -162,4 +165,5 @@ async def get_or_start_container(base_gguf_path: str, adapter_path: str | None =
         raise RuntimeError(f"Container on port {port} timed out during initialization.")
 
     _active_fleet[fleet_key] = port
+    logger.info(f"Container {container_name} is ready and tracking in fleet")
     return port
