@@ -376,7 +376,7 @@ export default function SettingsPage() {
           <div className="flex h-7 w-7 items-center justify-center rounded-md bg-brand text-sm font-semibold text-brand-foreground">
             F
           </div>
-          <span className="text-sm font-semibold">Forge SLM</span>
+          <span className="text-sm font-semibold">Forge</span>
         </div>
       </header>
 

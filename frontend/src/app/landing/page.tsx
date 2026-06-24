@@ -13,7 +13,7 @@ export default function Landing() {
             <div className="flex h-7 w-7 items-center justify-center rounded-md bg-brand text-sm font-semibold text-brand-foreground">
               F
             </div>
-            <span className="text-sm font-semibold">Forge SLM</span>
+            <span className="text-sm font-semibold">Forge</span>
           </div>
           <div className="hidden items-center gap-6 sm:flex">
             <a href="#features" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Features</a>
@@ -197,7 +197,7 @@ export default function Landing() {
             <div className="flex h-5 w-5 items-center justify-center rounded bg-brand text-[10px] font-bold text-brand-foreground">
               F
             </div>
-            <span className="text-xs text-muted-foreground">Forge SLM Platform</span>
+            <span className="text-xs text-muted-foreground">Forge</span>
           </div>
           <p className="text-xs text-muted-foreground">Self-hosted · Air-gapped · Open</p>
         </div>

@@ -13,7 +13,7 @@ export default async function LoginPage() {
 
   return (
     <AuthShell
-      title="Sign in to SLM Platform"
+      title="Sign in to Forge"
       description="Access your models, datasets, and playground"
       footer={
         <>
