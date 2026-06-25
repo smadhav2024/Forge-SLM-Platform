@@ -3,8 +3,13 @@
 import { useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
 import type { ChatMessage } from "@/lib/hooks/use-chat";
+import { MarkdownRenderer } from "@/components/markdown-renderer";
 
-function MessageBubble({ message, isLast, isStreaming }: {
+function MessageBubble({
+  message,
+  isLast,
+  isStreaming,
+}: {
   message: ChatMessage;
   isLast: boolean;
   isStreaming: boolean;
@@ -14,22 +19,32 @@ function MessageBubble({ message, isLast, isStreaming }: {
 
   return (
     <div className={cn("flex gap-3 px-4 py-3", isUser && "flex-row-reverse")}>
-      <div className={cn(
-        "flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-medium",
-        isUser
-          ? "bg-brand text-brand-foreground"
-          : "bg-secondary text-secondary-foreground"
-      )}>
+      <div
+        className={cn(
+          "flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-medium",
+          isUser
+            ? "bg-brand text-brand-foreground"
+            : "bg-secondary text-secondary-foreground",
+        )}
+      >
         {isUser ? "U" : "AI"}
       </div>
 
-      <div className={cn(
-        "max-w-[75%] rounded-lg px-3 py-2 text-sm leading-relaxed",
-        isUser
-          ? "bg-brand text-brand-foreground"
-          : "bg-secondary text-secondary-foreground"
-      )}>
-        <span className="whitespace-pre-wrap">{message.content}</span>
+      <div
+        className={cn(
+          "max-w-[75%] rounded-xl px-4 py-3",
+          isUser
+            ? "bg-brand text-brand-foreground"
+            : "bg-secondary text-secondary-foreground",
+        )}
+      >
+        {isUser ? (
+          <span className="whitespace-pre-wrap">{message.content}</span>
+        ) : (
+          <MarkdownRenderer content={message.content} />
+        )}
+        : (
+        <MarkdownRenderer content={message.content} />)
         {showCursor && (
           <span className="ml-0.5 inline-block h-4 w-0.5 animate-pulse bg-current align-middle" />
         )}

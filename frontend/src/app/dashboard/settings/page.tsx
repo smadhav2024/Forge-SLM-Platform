@@ -84,7 +84,6 @@ function ModelPrefsSection() {
       <SectionCard title="Default base model" description="Used when starting a new conversation with no explicit model selected.">
         <Field label="Base model">
           <select className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring">
-            <option>TinyLlama 1.1B Chat</option>
             <option>Llama 3.2 1B Instruct</option>
             <option>Qwen 2.5 3B Instruct</option>
             <option>DeepSeek-R1 Distill 1.5B</option>

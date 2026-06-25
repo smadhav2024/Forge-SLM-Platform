@@ -15,13 +15,6 @@ const BASE_MODELS: Record<
   string,
   { label: string; params: string; speed: string; useCase: string; badge: string }
 > = {
-  tinyllama: {
-    label: "TinyLlama 1.1B",
-    params: "1.1B parameters",
-    speed: "Fast — runs on CPU",
-    useCase: "Best for lightweight Q&A, classification, and short-form generation tasks where speed matters.",
-    badge: "Recommended",
-  },
   qwen: {
     label: "Qwen 0.5B",
     params: "0.5B parameters",

@@ -42,8 +42,7 @@ export default function SettingsPage() {
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-slate-400 mb-1">Model Selection</label>
-                <select className="w-full bg-slate-950 border border-slate-700 rounded-lg px-4 py-2.5 text-slate-200 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500">
-                  <option>TinyLlama 1.1B Chat (GGUF)</option>
+                <select className="w-full bg-slate-950 border border-slate-700 rounded-lg px-4 py-2.5 text-slate-200 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500">                
                   <option>Phi-2 2.7B (GGUF)</option>
                   <option>Mistral 7B Instruct (GGUF)</option>
                 </select>

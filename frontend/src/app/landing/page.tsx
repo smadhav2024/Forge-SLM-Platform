@@ -136,7 +136,6 @@ export default function Landing() {
 
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {[
-              { name: "TinyLlama 1.1B Chat", arch: "tinyllama", note: "Best for local CPU — no auth required", badge: "Recommended" },
               { name: "Llama 3.2 1B Instruct", arch: "llama3.2-1b", note: "Meta's compact instruction model", badge: "Meta" },
               { name: "Qwen 2.5 3B Instruct", arch: "qwen2.5-3b", note: "Multilingual, strong reasoning", badge: "Qwen" },
               { name: "DeepSeek-R1 Distill 1.5B", arch: "deepseek-r1-distill-qwen-1.5b", note: "Distilled reasoning on edge hardware", badge: "DeepSeek" },
