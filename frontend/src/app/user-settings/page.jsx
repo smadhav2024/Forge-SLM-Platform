@@ -2,6 +2,16 @@
 
 import React, { useState } from 'react';
 import { User, Settings, Database, HardDrive, Bell } from 'lucide-react';
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectSeparator,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState('models');
@@ -42,10 +52,18 @@ export default function SettingsPage() {
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-slate-400 mb-1">Model Selection</label>
-                <select className="w-full bg-slate-950 border border-slate-700 rounded-lg px-4 py-2.5 text-slate-200 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500">                
-                  <option>Phi-2 2.7B (GGUF)</option>
-                  <option>Mistral 7B Instruct (GGUF)</option>
-                </select>
+                <Select>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select a model" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectGroup>
+                      <SelectLabel>Models</SelectLabel>
+                      <SelectItem value="phi-2">Phi-2 2.7B (GGUF)</SelectItem>
+                      <SelectItem value="mistral">Mistral 7B Instruct (GGUF)</SelectItem>
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-400 mb-1">System Prompt</label>

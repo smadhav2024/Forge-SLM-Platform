@@ -114,10 +114,9 @@ export function ModelSelector({
                     !available && "opacity-60"
                   )}
                 >
-                  <div className="flex items-center justify-between w-full min-w-[200px] gap-4">
+                  <div className="flex items-center w-full min-w-[200px] gap-4">
                     <span className="font-medium truncate">{m.display_name}</span>
-                    
-                    <div className="flex items-center gap-2 shrink-0">
+                    <div className="flex items-center gap-2 shrink-0 ml-auto">
                       {!available && (
                         <span className="text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded-md bg-muted text-muted-foreground">
                           {label}

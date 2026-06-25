@@ -10,6 +10,16 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectSeparator,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 const tienne = Tienne({ subsets: ["latin"], weight: ["400", "700"] });
 
@@ -83,12 +93,20 @@ function ModelPrefsSection() {
     <div className="flex flex-col gap-6">
       <SectionCard title="Default base model" description="Used when starting a new conversation with no explicit model selected.">
         <Field label="Base model">
-          <select className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring">
-            <option>Llama 3.2 1B Instruct</option>
-            <option>Qwen 2.5 3B Instruct</option>
-            <option>DeepSeek-R1 Distill 1.5B</option>
-            <option>Gemma 3 1B IT</option>
-          </select>
+          <Select>
+            <SelectTrigger className="h-9">
+              <SelectValue placeholder="Select a model" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectGroup>
+                <SelectLabel>Models</SelectLabel>
+                <SelectItem value="llama-3.2-1b-instruct">Llama 3.2 1B Instruct</SelectItem>
+                <SelectItem value="qwen-2.5-3b-instruct">Qwen 2.5 3B Instruct</SelectItem>
+                <SelectItem value="deepseek-r1-distill-1.5b">DeepSeek-R1 Distill 1.5B</SelectItem>
+                <SelectItem value="gemma-3-1b-it">Gemma 3 1B IT</SelectItem>
+              </SelectGroup>
+            </SelectContent>
+          </Select>
         </Field>
         <Field label="Default system prompt">
           <textarea
@@ -250,11 +268,19 @@ function GeneralSection() {
     <div className="flex flex-col gap-6">
       <SectionCard title="Appearance" description="Choose your preferred interface theme.">
         <Field label="Theme">
-          <select className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring">
-            <option>System default</option>
-            <option>Light</option>
-            <option>Dark</option>
-          </select>
+          <Select>
+            <SelectTrigger className="h-9">
+              <SelectValue placeholder="Select a theme" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectGroup>
+                <SelectLabel>Themes</SelectLabel>
+                <SelectItem value="system">System default</SelectItem>
+                <SelectItem value="light">Light</SelectItem>
+                <SelectItem value="dark">Dark</SelectItem>
+              </SelectGroup>
+            </SelectContent>
+          </Select>
         </Field>
       </SectionCard>
 

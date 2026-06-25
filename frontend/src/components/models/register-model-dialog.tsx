@@ -8,6 +8,16 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useRegisterModel } from "@/lib/hooks/use-model-actions";
 import { useDatasets } from "@/lib/hooks/use-datasets";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectSeparator,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 const BASE_MODELS = ["llama3.2-1b", "qwen2.5-3b", "deepseek-r1-distill-qwen-1.5b", "gemma3-1b"];
 
@@ -66,36 +76,40 @@ export function RegisterModelDialog({
 
           <div className="flex flex-col gap-2">
             <Label htmlFor="base-model">Base model</Label>
-            <select
-              id="base-model"
-              value={baseModelKey}
-              onChange={(e) => setBaseModelKey(e.target.value)}
-              className="h-9 rounded-md border border-input bg-background px-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
-            >
-              {BASE_MODELS.map((m) => (
-                <option key={m} value={m}>{m}</option>
-              ))}
-            </select>
+            <Select value={baseModelKey} onValueChange={setBaseModelKey}>
+              <SelectTrigger className="h-9">
+                <SelectValue placeholder="Select a base model" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  <SelectLabel>Base Models</SelectLabel>
+                  {BASE_MODELS.map((m) => (
+                    <SelectItem key={m} value={m}>
+                      {m}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="flex flex-col gap-2">
             <Label htmlFor="dataset">Dataset</Label>
-            <select
-              id="dataset"
-              value={datasetId}
-              onChange={(e) => setDatasetId(e.target.value)}
-              disabled={datasetsLoading || !datasets?.length}
-              className="h-9 rounded-md border border-input bg-background px-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50"
-            >
-              <option value="" disabled>
-                {datasetsLoading ? "Loading..." : datasets?.length ? "Select dataset" : "No datasets yet"}
-              </option>
-              {datasets?.map((d) => (
-                <option key={d.id} value={String(d.id)}>
-                  {d.filename} {d.row_count ? `(${d.row_count} rows)` : ""}
-                </option>
-              ))}
-            </select>
+            <Select value={datasetId} onValueChange={setDatasetId}>
+              <SelectTrigger className="h-9">
+                <SelectValue placeholder="Select a dataset" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  <SelectLabel>Datasets</SelectLabel>
+                  {datasets?.map((d) => (
+                    <SelectItem key={d.id} value={String(d.id)}>
+                      {d.filename} {d.row_count ? `(${d.row_count} rows)` : ""}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
           </div>
         </div>
 
