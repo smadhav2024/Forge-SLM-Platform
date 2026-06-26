@@ -14,6 +14,7 @@ interface UseChatOptions {
   conversationId: number | null;
   config: ChatConfig;
   onConversationReady: (id: number) => void;
+  onDocumentsLoaded: (filenames: string[], hasDocuments: boolean) => void;
 }
 
 export function useChat({
@@ -21,6 +22,7 @@ export function useChat({
   conversationId,
   config,
   onConversationReady,
+  onDocumentsLoaded,
 }: UseChatOptions) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
@@ -31,8 +33,6 @@ export function useChat({
   useEffect(() => {
     conversationIdRef.current = conversationId;
   }, [conversationId]);
-
-  // ── RAG file upload helpers (called by ChatWorkspace) ──────────────────────
 
   const uploadFile = useCallback(async (convId: number, file: File) => {
     const form = new FormData();
@@ -58,14 +58,6 @@ export function useChat({
     await fetch(`/api/conversations/${convId}/documents`, { method: "DELETE" });
   }, []);
 
-  // ── Send message ───────────────────────────────────────────────────────────
-
-  /**
-   * pendingFilesRef: ChatWorkspace passes any queued files here before calling
-   * sendMessage so they get uploaded right after conversation creation.
-   */
-  const pendingFilesRef = useRef<File[]>([]);
-
   const sendMessage = useCallback(
     async (text: string, pendingFiles: File[] = []) => {
       if (!modelId || isStreaming) return;
@@ -90,7 +82,7 @@ export function useChat({
       try {
         let activeConvId = conversationIdRef.current;
 
-        if (!activeConvId && modelId) {
+        if (!activeConvId) {
           try {
             const res = await fetch("/api/conversations", {
               method: "POST",
@@ -112,10 +104,14 @@ export function useChat({
           }
         }
 
-        // Upload any queued documents now that we have a conversation ID
         if (pendingFiles.length > 0 && activeConvId) {
           try {
             await uploadFiles(activeConvId, pendingFiles);
+            const docRes = await fetch(`/api/conversations/${activeConvId}/documents`);
+            if (docRes.ok) {
+              const docData = await docRes.json();
+              onDocumentsLoaded(docData.filenames ?? [], docData.has_documents ?? false);
+            }
           } catch {
             toast.error("Document upload failed — continuing without context.");
           }
@@ -196,9 +192,8 @@ export function useChat({
                 setMessages((prev) => {
                   const next = [...prev];
                   const last = next[next.length - 1];
-                  if (last?.role === "assistant") {
+                  if (last?.role === "assistant")
                     next[next.length - 1] = { ...last, content: last.content + token };
-                  }
                   return next;
                 });
               }
@@ -215,25 +210,27 @@ export function useChat({
         abortRef.current = null;
       }
     },
-    [modelId, isStreaming, messages, config, uploadFiles, onConversationReady],
+    [modelId, isStreaming, messages, config, uploadFiles, onConversationReady, onDocumentsLoaded],
   );
 
   const stopStreaming = useCallback(() => {
     abortRef.current?.abort();
   }, []);
 
-  // ── Load messages when conversation changes ────────────────────────────────
-
   useEffect(() => {
     if (!conversationId) {
       setMessages([]);
       prevConversationIdRef.current = null;
+      onDocumentsLoaded([], false);
       return;
     }
 
     const isNewlyCreated = prevConversationIdRef.current === null && isStreaming;
 
-    if (prevConversationIdRef.current !== null && prevConversationIdRef.current !== conversationId) {
+    if (
+      prevConversationIdRef.current !== null &&
+      prevConversationIdRef.current !== conversationId
+    ) {
       abortRef.current?.abort();
       setIsStreaming(false);
     }
@@ -244,19 +241,27 @@ export function useChat({
     const ctrl = new AbortController();
     (async () => {
       try {
-        const res = await fetch(`/api/conversations/${conversationId}/messages`, {
-          signal: ctrl.signal,
-        });
-        if (!res.ok) {
-          const txt = await res.text().catch(() => "");
-          toast.error(txt || `Failed to load messages: ${res.status}`);
+        const [msgRes, docRes] = await Promise.all([
+          fetch(`/api/conversations/${conversationId}/messages`, { signal: ctrl.signal }),
+          fetch(`/api/conversations/${conversationId}/documents`, { signal: ctrl.signal }),
+        ]);
+
+        if (!msgRes.ok) {
+          const txt = await msgRes.text().catch(() => "");
+          toast.error(txt || `Failed to load messages: ${msgRes.status}`);
           return;
         }
-        const msgs: ConversationMessage[] = await res.json();
+
+        const msgs: ConversationMessage[] = await msgRes.json();
         setMessages(msgs.map((m) => ({ ...m, clientId: crypto.randomUUID() })));
+
+        if (docRes.ok) {
+          const docData = await docRes.json();
+          onDocumentsLoaded(docData.filenames ?? [], docData.has_documents ?? false);
+        }
       } catch (err) {
         if ((err as Error).name !== "AbortError")
-          toast.error("Failed to load conversation messages.");
+          toast.error("Failed to load conversation.");
       }
     })();
 

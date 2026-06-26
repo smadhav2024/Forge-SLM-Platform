@@ -1,7 +1,9 @@
 "use client";
 
 import { useRef } from "react";
-import { PanelRightClose, FileText, Upload, Trash2, Loader2, CheckCircle2, BookOpen } from "lucide-react";
+import {
+  PanelRightClose, FileText, Upload, Trash2, Loader2, CheckCircle2, BookOpen,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -19,6 +21,7 @@ export function RightSidebar() {
     updateConfig,
     isSidebarOpen,
     setSidebarOpen,
+    uploadedFileNames,
     pendingFiles,
     isUploadingDoc,
     hasUploadedDocs,
@@ -30,6 +33,12 @@ export function RightSidebar() {
   const fileRef = useRef<HTMLInputElement>(null);
 
   if (!isSidebarOpen) return null;
+
+  // Show server-persisted filenames if available, otherwise fall back to pending (in-flight) files
+  const displayFiles =
+    uploadedFileNames.length > 0
+      ? uploadedFileNames
+      : pendingFiles.map((f) => f.name);
 
   return (
     <aside className="flex h-full w-72 shrink-0 flex-col gap-5 overflow-y-auto border-l bg-sidebar p-4">
@@ -63,11 +72,10 @@ export function RightSidebar() {
       {/* Temperature */}
       <div className="flex flex-col gap-2">
         <div className="flex items-center justify-between">
-          <Label htmlFor="temperature">Temperature</Label>
+          <Label>Temperature</Label>
           <span className="text-xs text-muted-foreground">{config.temperature.toFixed(1)}</span>
         </div>
         <Slider
-          id="temperature"
           min={temperature.min}
           max={temperature.max}
           step={temperature.step}
@@ -86,11 +94,10 @@ export function RightSidebar() {
       {/* Top-P */}
       <div className="flex flex-col gap-2">
         <div className="flex items-center justify-between">
-          <Label htmlFor="top-p">Top-P</Label>
+          <Label>Top-P</Label>
           <span className="text-xs text-muted-foreground">{config.topP.toFixed(2)}</span>
         </div>
         <Slider
-          id="top-p"
           min={topP.min}
           max={topP.max}
           step={topP.step}
@@ -105,31 +112,27 @@ export function RightSidebar() {
       {/* Max tokens */}
       <div className="flex flex-col gap-2">
         <div className="flex items-center justify-between">
-          <Label htmlFor="max-tokens">Max tokens</Label>
+          <Label>Max tokens</Label>
           <span className="text-xs text-muted-foreground">
             max {maxTokens.max.toLocaleString()}
           </span>
         </div>
         <Input
-          id="max-tokens"
           type="number"
           min={maxTokens.min}
           max={maxTokens.max}
           value={config.maxTokens}
           onChange={(e) => {
             const value = Number(e.target.value);
-            if (!Number.isNaN(value)) {
-              updateConfig({
-                maxTokens: Math.min(maxTokens.max, Math.max(maxTokens.min, value)),
-              });
-            }
+            if (!Number.isNaN(value))
+              updateConfig({ maxTokens: Math.min(maxTokens.max, Math.max(maxTokens.min, value)) });
           }}
         />
       </div>
 
       <Separator />
 
-      {/* ── RAG Context Documents ───────────────────────────── */}
+      {/* RAG Context Documents */}
       <div className="flex flex-col gap-3">
         <div className="flex items-center gap-2">
           <BookOpen className="h-4 w-4 text-muted-foreground" />
@@ -142,16 +145,15 @@ export function RightSidebar() {
         </div>
 
         <p className="text-[11px] text-muted-foreground leading-relaxed">
-          Upload PDF, DOCX, or TXT files. The model will use them as context when answering your
-          questions.
+          Upload PDF, DOCX, or TXT files. The model will use them as context when answering.
         </p>
 
-        {/* Pending / uploaded files list */}
-        {pendingFiles.length > 0 && (
+        {/* File list — server-persisted names shown after refresh */}
+        {displayFiles.length > 0 && (
           <div className="flex flex-col gap-1.5">
-            {pendingFiles.map((file, i) => (
+            {displayFiles.map((name, i) => (
               <div
-                key={`${file.name}-${i}`}
+                key={`${name}-${i}`}
                 className="flex items-center gap-2 rounded-md border bg-secondary/50 px-2.5 py-1.5 text-xs"
               >
                 {isUploadingDoc ? (
@@ -160,13 +162,14 @@ export function RightSidebar() {
                   <CheckCircle2 className="h-3 w-3 shrink-0 text-emerald-500" />
                 )}
                 <FileText className="h-3 w-3 shrink-0 text-muted-foreground" />
-                <span className="flex-1 truncate text-foreground">{file.name}</span>
+                <span className="flex-1 truncate text-foreground">{name}</span>
               </div>
             ))}
           </div>
         )}
 
-        {hasUploadedDocs && (
+        {/* Active RAG indicator when docs exist but filenames are legacy nulls */}
+        {hasUploadedDocs && uploadedFileNames.length === 0 && pendingFiles.length === 0 && (
           <div
             className={cn(
               "flex items-center gap-2 rounded-md border px-2.5 py-2 text-xs",
@@ -205,7 +208,7 @@ export function RightSidebar() {
             {isUploadingDoc ? "Uploading…" : "Upload file"}
           </Button>
 
-          {(hasUploadedDocs || pendingFiles.length > 0) && (
+          {(hasUploadedDocs || displayFiles.length > 0) && (
             <Button
               variant="ghost"
               size="sm"

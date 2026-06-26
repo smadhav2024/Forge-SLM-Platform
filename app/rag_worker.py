@@ -51,25 +51,23 @@ def extract_text(file_path: str) -> str:
     # Clean any stray null bytes to protect PostgreSQL
     return raw_text.replace("\x00", "")
 
-async def process_document_task(conversation_id: int, file_path: str):
+async def process_document_task(conversation_id: int, file_path: str, source_filename: str = ""):
     """Background worker that processes the document asynchronously."""
     try:
-        # THE FIX: We MUST call extract_text here, NOT f.read()
         content = extract_text(file_path)
         
         if not content.strip():
             print(f"SYSTEM WARNING: No text could be extracted from {file_path}")
             return
 
-        # Chunk and embed
         text_chunks = chunk_text(content)
         embeddings = list(embedding_model.embed(text_chunks))
 
-        # Save to PostgreSQL
         async with AsyncSessionLocal() as db:
             for chunk, emb in zip(text_chunks, embeddings):
                 doc_vec = DocumentVector(
                     conversation_id=conversation_id,
+                    source_filename=source_filename or None,
                     text_chunk=chunk,
                     embedding_matrix=emb.tolist()
                 )
@@ -82,6 +80,5 @@ async def process_document_task(conversation_id: int, file_path: str):
         print(f"SYSTEM: RAG Worker Error on Conv #{conversation_id}: {str(e)}")
         
     finally:
-        # Cleanup ephemeral file
         if os.path.exists(file_path):
             os.remove(file_path)

@@ -11,6 +11,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
 
   try {
     const data = await backendFetchJson(`/conversations/${id}/documents`, { token });
+    // data shape: { conversation_id, filenames: string[], has_documents: boolean }
     return NextResponse.json(data);
   } catch (err) {
     if (err instanceof BackendError)

@@ -39,8 +39,7 @@ export function ChatWorkspace() {
     const llamaModel = models.find(
       (m) => m.is_base_model && m.base_model_key?.toLowerCase().includes("llama"),
     );
-    const fallback = models.find((m) => m.is_base_model);
-    const def = llamaModel ?? fallback;
+    const def = llamaModel ?? models.find((m) => m.is_base_model);
     if (def) setModelId(String(def.id));
   }, [models]);
 
@@ -53,12 +52,22 @@ export function ChatWorkspace() {
   const {
     config,
     pendingFiles,
+    onFileSelected,
     registerRagHandlers,
+    setUploadedFileNames,
     setHasUploadedDocs,
   } = useChatConfig();
 
   const queryClient = useQueryClient();
-  const conversationsQueryKey = ["conversations"] as const;
+
+  // Callback: called by useChat when messages+docs finish loading for a conversation
+  const handleDocumentsLoaded = useCallback(
+    (filenames: string[], hasDocuments: boolean) => {
+      setUploadedFileNames(filenames);
+      setHasUploadedDocs(hasDocuments);
+    },
+    [setUploadedFileNames, setHasUploadedDocs],
+  );
 
   const {
     messages,
@@ -73,54 +82,43 @@ export function ChatWorkspace() {
     config,
     onConversationReady: (id) => {
       setConversationId(id);
-      queryClient.invalidateQueries({ queryKey: conversationsQueryKey });
+      queryClient.invalidateQueries({ queryKey: ["conversations"] });
     },
+    onDocumentsLoaded: handleDocumentsLoaded,
   });
 
-  // Register RAG handlers with the context whenever conversationId changes so
-  // the sidebar's upload/clear buttons act on the correct conversation.
+  // Register upload/clear handlers with context whenever conversationId changes
   useEffect(() => {
+    if (!conversationId) {
+      registerRagHandlers(null);
+      return;
+    }
+
     registerRagHandlers({
       uploadFile: async (file: File) => {
-        if (!conversationId) return; // not yet created; will be uploaded on first send
         await uploadFile(conversationId, file);
-        setHasUploadedDocs(true);
+        // Refresh filenames from server after upload
+        const res = await fetch(`/api/conversations/${conversationId}/documents`);
+        if (res.ok) {
+          const data = await res.json();
+          setUploadedFileNames(data.filenames ?? []);
+          setHasUploadedDocs(data.has_documents ?? false);
+        }
       },
       clearDocuments: async () => {
-        if (!conversationId) return;
         await clearDocuments(conversationId);
-        setHasUploadedDocs(false);
       },
     });
 
-    // Check RAG status when loading an existing conversation
-    if (conversationId) {
-      fetch(`/api/conversations/${conversationId}/documents`)
-        .then((r) => r.json())
-        .then((d) => setHasUploadedDocs(Boolean(d?.has_documents)))
-        .catch(() => {});
-    } else {
-      setHasUploadedDocs(false);
-    }
+    return () => registerRagHandlers(null);
+  }, [conversationId, uploadFile, clearDocuments, registerRagHandlers, setUploadedFileNames, setHasUploadedDocs]);
 
-    return () => {
-      registerRagHandlers(null);
-    };
-  }, [conversationId, uploadFile, clearDocuments, registerRagHandlers, setHasUploadedDocs]);
-
-  // Wrap sendMessage to pass any queued files so they upload with the first message
   const handleSend = useCallback(
     (text: string) => {
       sendMessage(text, pendingFiles);
     },
     [sendMessage, pendingFiles],
   );
-
-  // onFileDropped still works for drag-and-drop directly onto the chat input;
-  // it goes through the context's onFileSelected which handles the upload.
-  const { onFileSelected } = useChatConfig();
-
-  const isDisabled = !modelId;
 
   return (
     <div className="flex h-full flex-col">
@@ -143,7 +141,7 @@ export function ChatWorkspace() {
           onStop={stopStreaming}
           onFileDropped={onFileSelected}
           isStreaming={isStreaming}
-          isDisabled={isDisabled}
+          isDisabled={!modelId}
         />
       </div>
     </div>

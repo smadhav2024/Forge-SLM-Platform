@@ -34,22 +34,27 @@ async def list_documents(
     db: AsyncSession = Depends(get_db),
     user_id: int = Depends(get_current_user),
 ):
-    """Return the distinct document chunks stored for a conversation (deduped by a synthetic name)."""
+    """Return the distinct document chunks and uploaded filenames for a conversation."""
     await _assert_conversation_ownership(conversation_id, user_id, db)
 
+    # Fetch both the ID (for counting chunks) and the source_filename
     result = await db.execute(
-        select(DocumentVector.id, DocumentVector.text_chunk)
+        select(DocumentVector.id, DocumentVector.source_filename)
         .where(DocumentVector.conversation_id == conversation_id)
         .order_by(DocumentVector.id.asc())
     )
     rows = result.all()
 
-    # Group contiguous chunks so the UI can show one entry per upload.
-    # We tag the very first chunk of each upload as the document label.
+    chunk_count = len(rows)
+    
+    # Filter out nulls (legacy rows) and deduplicate filenames, preserving order
+    filenames = list(dict.fromkeys(row.source_filename for row in rows if row.source_filename))
+
     return {
         "conversation_id": conversation_id,
-        "chunk_count": len(rows),
-        "has_documents": len(rows) > 0,
+        "chunk_count": chunk_count,
+        "filenames": filenames,
+        "has_documents": chunk_count > 0,
     }
 
 
@@ -74,7 +79,8 @@ async def upload_document(
         content = await file.read()
         await out_file.write(content)
 
-    background_tasks.add_task(process_document_task, conversation_id, file_path)
+    # Includes the updated signature with `file.filename` for the RAG pipeline
+    background_tasks.add_task(process_document_task, conversation_id, file_path, file.filename)
 
     return {
         "status": "Accepted",

@@ -41,6 +41,7 @@ async def apply():
             await db.execute(text("ALTER TABLE models ADD COLUMN IF NOT EXISTS dataset_id INTEGER;"))
             await db.execute(text("ALTER TABLE models ADD COLUMN IF NOT EXISTS worker_pid INTEGER;"))
             await db.execute(text("ALTER TABLE conversations ADD COLUMN IF NOT EXISTS pinned BOOLEAN DEFAULT false NOT NULL;"))
+            await db.execute(text("ALTER TABLE document_vectors ADD COLUMN IF NOT EXISTS source_filename VARCHAR"))
             
             # Commit all changes at once
             await db.commit()
