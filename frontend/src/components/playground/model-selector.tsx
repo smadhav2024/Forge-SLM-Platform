@@ -1,5 +1,5 @@
 "use client";
-
+ 
 import { useMemo } from "react";
 import { useEffect } from "react";
 import { useModels } from "@/lib/hooks/use-models";
@@ -15,7 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-
+ 
 export function ModelSelector({
   value,
   onChange,
@@ -24,7 +24,7 @@ export function ModelSelector({
   onChange: (id: string) => void;
 }) {
   const { data: models, isLoading } = useModels();
-
+ 
   const baseModels = useMemo(
     () => models?.filter((m) => m.is_base_model) ?? [],
     [models],
@@ -33,7 +33,7 @@ export function ModelSelector({
     () => models?.filter((m) => !m.is_base_model) ?? [],
     [models],
   );
-
+ 
   useEffect(() => {
     if (!models) return;
     const exists = models.some((m) => String(m.id) === String(value));
@@ -42,12 +42,12 @@ export function ModelSelector({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [models]);
-
+ 
   const selectedModel = useMemo(
     () => models?.find((m) => String(m.id) === value),
     [models, value],
   );
-
+ 
   const getStatusInfo = (status: string) => {
     const s = status.toUpperCase();
     if (s === "READY" || s === "COMPLETED") {
@@ -70,7 +70,7 @@ export function ModelSelector({
       dot: "bg-destructive/80",
     };
   };
-
+ 
   return (
     <Select
       value={value ?? undefined}
@@ -81,11 +81,11 @@ export function ModelSelector({
       <SelectTrigger
         style={{ transform: "none" }}
         className={cn(
-      "no-scale h-9 w-full rounded-xl border-input/60 bg-background/50 backdrop-blur-sm px-3 shadow-sm transition-all",
-      "hover:bg-accent/50 hover:border-accent-foreground/20",
-      "focus:ring-2 focus:ring-primary/20 focus:border-primary/50",
-      "disabled:opacity-50 disabled:cursor-not-allowed",
-      !value && "text-muted-foreground"
+          "no-scale h-9 w-full rounded-xl border-input/60 bg-background/50 backdrop-blur-sm px-3 shadow-sm transition-all",
+          "hover:bg-accent/50 hover:border-accent-foreground/20",
+          "focus:ring-2 focus:ring-primary/20 focus:border-primary/50",
+          "disabled:opacity-50 disabled:cursor-not-allowed",
+          !value && "text-muted-foreground",
         )}
       >
         <div className="flex items-center gap-2.5 truncate">
@@ -100,20 +100,20 @@ export function ModelSelector({
               )}
             </>
           ) : null}
-
+ 
           <SelectValue
             placeholder={isLoading ? "Loading models..." : "Select a model"}
           />
         </div>
       </SelectTrigger>
-
+ 
       <SelectContent className="rounded-xl shadow-lg border-muted/50 backdrop-blur-xl bg-background/95">
         {!models?.length && !isLoading && (
           <div className="py-6 text-center text-sm text-muted-foreground">
             No models available
           </div>
         )}
-
+ 
         {userModels.length > 0 && (
           <SelectGroup>
             <SelectLabel className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground px-2 py-1.5 mt-1">
@@ -122,7 +122,7 @@ export function ModelSelector({
             </SelectLabel>
             {userModels.map((m) => {
               const { available, label, dot } = getStatusInfo(m.status);
-
+ 
               return (
                 /* Added inline transform freeze here */
                 <SelectItem
@@ -131,15 +131,19 @@ export function ModelSelector({
                   disabled={!available}
                   style={{ transform: "none" }}
                   className={cn(
-                    "no-scale rounded-lg mx-1 my-0.5 cursor-pointer transition-colors focus:bg-accent/80 hover:scale-100 ",
+                    "no-scale rounded-lg mx-1 my-0.5 cursor-pointer transition-colors focus:bg-accent/80 hover:scale-100",
+                    "[&>span]:w-full", // Forces the Radix inner span to stretch to the edge
                     !available && "opacity-60",
                   )}
                 >
-                  <div className="flex items-center w-full min-w-[200px] gap-4">
-                    <span className="font-medium truncate">
+                  <div className="flex items-center justify-between w-full min-w-[200px] gap-4">
+                    {/* Added flex-1 and text-left to push the right-side content away */}
+                    <span className="font-medium truncate flex-1 text-left">
                       {m.display_name}
                     </span>
-                    <div className="flex items-center gap-2 shrink-0 ml-auto">
+ 
+                    {/* Removed ml-auto, as justify-between on the parent handles it now */}
+                    <div className="flex items-center gap-2 shrink-0">
                       {!available && (
                         <span className="text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded-md bg-muted text-muted-foreground">
                           {label}
@@ -153,11 +157,11 @@ export function ModelSelector({
             })}
           </SelectGroup>
         )}
-
+ 
         {userModels.length > 0 && baseModels.length > 0 && (
           <SelectSeparator className="mx-2 my-2 opacity-50" />
         )}
-
+ 
         {baseModels.length > 0 && (
           <SelectGroup>
             <SelectLabel className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground px-2 py-1.5">
@@ -181,3 +185,5 @@ export function ModelSelector({
     </Select>
   );
 }
+ 
+ 

@@ -35,7 +35,7 @@ import { CHAT_CONFIG_LIMITS, DEFAULT_CHAT_CONFIG } from "@/lib/chat-config";
 import type { ChatConfig } from "@/lib/chat-config";
 import type { ModelSummary } from "@/types/api";
 
-// ─── Types ──────────────────────────────────────────────────────────────────
+//  Types  
 
 interface PanelMessage {
   clientId: string;
@@ -43,7 +43,7 @@ interface PanelMessage {
   content: string;
 }
 
-// ─── Streaming helper ────────────────────────────────────────────────────────
+// Streaming helper  
 
 async function streamChat(
   modelId: string,
@@ -118,7 +118,7 @@ async function streamChat(
   }
 }
 
-// ─── Model selector (filtered) ───────────────────────────────────────────────
+//  Model selector (filtered) 
 
 function FilteredModelSelector({
   value,
@@ -198,7 +198,7 @@ function FilteredModelSelector({
   );
 }
 
-// ─── Message bubble ───────────────────────────────────────────────────────────
+//  Message bubble  
 
 function MessageBubble({
   message,
@@ -243,7 +243,7 @@ function MessageBubble({
   );
 }
 
-// ─── Chat panel ───────────────────────────────────────────────────────────────
+//  Chat panel 
 
 function ChatPanel({
   label,
@@ -327,7 +327,7 @@ function ChatPanel({
   );
 }
 
-// ─── Right settings panel ─────────────────────────────────────────────────────
+//  Right settings panel 
 
 function SettingsPanel({
   config,
@@ -430,7 +430,7 @@ function SettingsPanel({
   );
 }
 
-// ─── Main page ────────────────────────────────────────────────────────────────
+//  Main page  
 
 export default function ComparePage() {
   const { data: models = [] } = useModels();

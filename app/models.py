@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Text, Boolean
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Text, Boolean, Float
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 from pgvector.sqlalchemy import Vector
@@ -34,6 +34,12 @@ class Dataset(Base):
 
     user = relationship("User", back_populates="datasets")
 
+    pipeline = relationship(
+        "DatasetPipeline",
+        back_populates="dataset",
+        uselist=False,
+        cascade="all, delete-orphan",
+    )
 
 class Model(Base):
     __tablename__ = "models"
@@ -105,3 +111,73 @@ class ApiKey(Base):
     name = Column(String, default="Default Key")
     created_at = Column(DateTime, default=datetime.utcnow)
     is_active = Column(Boolean, default=True)
+
+"""
+ADD THIS CLASS to app/models.py, directly after the Dataset class.
+Also add the back-reference to Dataset (shown at the bottom).
+
+Imports already present in models.py that this needs:
+  Column, Integer, String, Float, Text, ForeignKey, DateTime, func
+  relationship, Base
+"""
+
+class DatasetPipeline(Base):
+    """
+    Tracks every stage of the 6-layer preprocessing pipeline for a Dataset.
+    Created immediately on /datasets/process and updated as the pipeline runs.
+    """
+    __tablename__ = "dataset_pipelines"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    dataset_id = Column(
+        Integer,
+        ForeignKey("datasets.id", ondelete="CASCADE"),
+        nullable=False,
+        unique=True,   # one pipeline record per dataset
+    )
+
+    # ── Pipeline lifecycle ─────────────────────────────────────────────────
+    # Possible values: PROCESSING | REVIEW | COMPLETED | FAILED
+    pipeline_status = Column(String, nullable=False, default="PROCESSING")
+    error_message   = Column(Text, nullable=True)
+    pipeline_logs   = Column(Text, nullable=True)   # newline-joined log lines
+    created_at      = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at      = Column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+    )
+
+    # ── File paths ─────────────────────────────────────────────────────────
+    raw_file_path        = Column(String, nullable=True)   # original upload
+    output_file_path     = Column(String, nullable=True)   # cleaned .jsonl
+    quarantine_file_path = Column(String, nullable=True)   # rejected rows .jsonl
+
+    # ── Layer 2 output ─────────────────────────────────────────────────────
+    # One of: jsonl_messages | instruction | chat_log | unstructured_prose
+    schema_type = Column(String, nullable=True)
+
+    # ── Layer 3 stats ──────────────────────────────────────────────────────
+    total_rows_raw   = Column(Integer, nullable=True)
+    total_rows_clean = Column(Integer, nullable=True)
+    rows_removed     = Column(Integer, nullable=True)
+    duplicate_count  = Column(Integer, nullable=True)
+
+    # ── Processing parameters (stored so /reprocess can replay them) ───────
+    dedup_threshold = Column(Float,   nullable=True, default=0.85)
+    chunk_size      = Column(Integer, nullable=True, default=500)
+    chunk_overlap   = Column(Integer, nullable=True, default=50)
+
+    # ── Layer 6 output ─────────────────────────────────────────────────────
+    # JSON-serialised LoRA config dict e.g. {"r":8,"lora_alpha":16,...}
+    lora_config = Column(Text, nullable=True)
+
+    # ── ORM relationship ───────────────────────────────────────────────────
+    dataset = relationship("Dataset", back_populates="pipeline")
+
+
+# ─── Also patch the Dataset class ─────────────────────────────────────────────
+# Inside the Dataset class add:
+#
+#
+# This gives Dataset.pipeline as a single (or None) DatasetPipeline object.

@@ -30,7 +30,7 @@ class SettingsResponse(BaseModel):
     max_tokens: int
 
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "default_model": "TinyLlama 1.1B Chat (GGUF)",
                 "system_prompt": "You are a helpful, respectful, and honest local AI assistant.",
