@@ -13,11 +13,12 @@ import { Slider } from "@/components/ui/slider";
 import { Label } from "@/components/ui/label";
 import {
   CheckCircle2, AlertTriangle, RefreshCw, Undo2,
-  ChevronLeft, ChevronRight, Loader2, Pencil, X, Check,
+  ChevronLeft, ChevronRight, Loader2, Pencil, X, Check, Download,
 } from "lucide-react";
 import {
   useDatasetSummary, useQuarantine,
   useRestoreRows, useReprocess, useEditPair,
+  downloadDataset,
   type PreviewPair, type QuarantineRow,
 } from "@/lib/hooks/use-datasets";
 
@@ -294,14 +295,42 @@ const SCHEMA_LABELS: Record<string, string> = {
 
 export function DatasetReviewPanel({ datasetId, onClose }: Props) {
   const { data, isLoading } = useDatasetSummary(datasetId);
+  const [downloading, setDownloading] = useState(false);
+
+  const handleDownload = async () => {
+    if (!data || downloading) return;
+    setDownloading(true);
+    try {
+      await downloadDataset(data.id, data.filename);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Download failed");
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   return (
     <Sheet open={datasetId != null} onOpenChange={(o) => !o && onClose()}>
       <SheetContent className="w-full sm:max-w-xl overflow-y-auto flex flex-col gap-4">
         <SheetHeader>
-          <SheetTitle className="text-sm">
-            {isLoading ? "Loading…" : (data?.filename ?? "Dataset Review")}
-          </SheetTitle>
+          <div className="flex items-center justify-between gap-2">
+            <SheetTitle className="text-sm truncate">
+              {isLoading ? "Loading…" : (data?.filename ?? "Dataset Review")}
+            </SheetTitle>
+            {data && (
+              <button
+                onClick={handleDownload}
+                disabled={downloading}
+                className="shrink-0 rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
+                title="Download JSONL"
+                aria-label="Download dataset as JSONL"
+              >
+                {downloading
+                  ? <Loader2 className="h-4 w-4 animate-spin" />
+                  : <Download className="h-4 w-4" />}
+              </button>
+            )}
+          </div>
         </SheetHeader>
 
         {isLoading && (
@@ -372,8 +401,8 @@ export function DatasetReviewPanel({ datasetId, onClose }: Props) {
               {data.preview_samples?.length > 0 && (
                 <div className="flex flex-col gap-2">
                   <p className="text-xs font-medium">Preview samples</p>
-                  {data.preview_samples.map((pair) => (
-                    <PairCard key={pair._id} pair={pair} datasetId={data.id} />
+                  {data.preview_samples.map((pair, idx) => (
+                    <PairCard key={`${pair._id}-${idx}`} pair={pair} datasetId={data.id} />
                   ))}
                 </div>
               )}

@@ -1,26 +1,32 @@
 "use client";
 
-import { useState } from "react";
-import { useDatasets, useDeleteDataset, type DatasetSummary } from "@/lib/hooks/use-datasets";
+import { Activity, useState } from "react";
+import { useDatasets, useDeleteDataset, downloadDataset, type DatasetSummary } from "@/lib/hooks/use-datasets";
 import { UploadDatasetDialog } from "@/components/datasets/upload-dataset-dialog";
 import { DatasetReviewPanel } from "@/components/datasets/DatasetReviewPanel";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
   Plus, Database, FileText, X, Loader2,
-  ChevronRight, AlertTriangle, CheckCircle2, Clock,
+  ChevronRight, AlertTriangle, CheckCircle2, Clock, Download,
+  Crown,
+  SlidersHorizontal,
+  ActivityIcon,
+  Check,
+  ActivitySquare,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
   Dialog, DialogContent, DialogHeader,
   DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
+import { check } from "zod";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 const STATUS_CONFIG = {
   PROCESSING: { label: "Processing", icon: Clock,         color: "bg-yellow-500/10 text-yellow-400 border-yellow-500/20" },
-  REVIEW:     { label: "Review",     icon: AlertTriangle,  color: "bg-violet-500/10 text-violet-400 border-violet-500/20" },
+  REVIEW:     { label: "Review",     icon: ActivitySquare,  color: "bg-violet-500/10 text-violet-400 border-violet-500/20" },
   COMPLETED:  { label: "Ready",      icon: CheckCircle2,   color: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" },
   FAILED:     { label: "Failed",     icon: AlertTriangle,  color: "bg-red-500/10 text-red-400 border-red-500/20" },
 } as const;
@@ -51,6 +57,19 @@ function DatasetRow({
   const schemaLabel = dataset.pipeline?.schema_type
     ?.replace("_", " ")
     .replace("unstructured prose", "prose→Q&A") ?? null;
+  const [downloading, setDownloading] = useState(false);
+
+  const handleDownload = async () => {
+    if (downloading) return;
+    setDownloading(true);
+    try {
+      await downloadDataset(dataset.id, dataset.filename);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Download failed");
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   return (
     <div className="group flex items-center justify-between rounded-lg border bg-card px-4 py-3 transition-colors hover:bg-muted/40">
@@ -71,16 +90,27 @@ function DatasetRow({
 
       <div className="flex shrink-0 items-center gap-1">
         {canReview && (
-          
           <Button
             size="sm"
             variant="ghost"
             className="h-7 gap-1 text-xs opacity-0 transition-opacity group-hover:opacity-100"
             onClick={onReview}
           >
-
             Review <ChevronRight className="h-3 w-3" />
           </Button>
+        )}
+        {canReview && (
+          <button
+            onClick={handleDownload}
+            disabled={downloading}
+            className="rounded-md p-1.5 text-muted-foreground opacity-0 transition-opacity hover:bg-muted hover:text-foreground group-hover:opacity-100 focus:opacity-100 disabled:cursor-not-allowed disabled:opacity-40"
+            aria-label={`Download ${dataset.filename}`}
+            title="Download JSONL"
+          >
+            {downloading
+              ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              : <Download className="h-3.5 w-3.5" />}
+          </button>
         )}
         <button
           onClick={onDelete}

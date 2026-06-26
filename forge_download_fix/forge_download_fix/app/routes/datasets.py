@@ -486,40 +486,6 @@ async def edit_pair(
     return {"updated": True, "pair_id": payload.pair_id}
 
 
-
-# ─────────────────────────────────────────────────────────────────────────────
-# GET /datasets/{id}/download  — stream processed JSONL to client
-# ─────────────────────────────────────────────────────────────────────────────
-
-@router.get("/{dataset_id}/download")
-async def download_dataset(
-    dataset_id: int,
-    db: AsyncSession = Depends(get_db),
-    current_user=Depends(get_current_user),
-):
-    dataset, pipe = await _get_own_dataset(dataset_id, current_user.id, db)
-
-    if not pipe or not pipe.output_file_path:
-        raise HTTPException(
-            status_code=404,
-            detail="Processed file not found. Run the pipeline first.",
-        )
-
-    path = pipe.output_file_path
-    if not os.path.isfile(path):
-        raise HTTPException(
-            status_code=404,
-            detail=f"File missing on disk: {path}",
-        )
-
-    safe_name = dataset.filename.replace(" ", "_") + "_processed.jsonl"
-    return FileResponse(
-        path=path,
-        media_type="application/x-ndjson",
-        filename=safe_name,
-    )
-
-
 # ─────────────────────────────────────────────────────────────────────────────
 # GET /datasets/{id}  (single dataset detail)
 # ─────────────────────────────────────────────────────────────────────────────
@@ -576,6 +542,40 @@ async def delete_dataset(
 
     await db.delete(ds)
     await db.commit()
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# GET /datasets/{id}/download  — stream processed JSONL to client
+# ─────────────────────────────────────────────────────────────────────────────
+
+@router.get("/{dataset_id}/download")
+async def download_dataset(
+    dataset_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    dataset, pipe = await _get_own_dataset(dataset_id, current_user.id, db)
+
+    if not pipe or not pipe.output_file_path:
+        raise HTTPException(
+            status_code=404,
+            detail="Processed file not found. Run the pipeline first.",
+        )
+
+    path = pipe.output_file_path
+    if not os.path.isfile(path):
+        raise HTTPException(
+            status_code=404,
+            detail=f"File missing on disk: {path}",
+        )
+
+    safe_name = dataset.filename.replace(" ", "_") + "_processed.jsonl"
+    return FileResponse(
+        path=path,
+        media_type="application/x-ndjson",
+        filename=safe_name,
+    )
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 # POST /datasets/  — legacy direct JSONL import (kept for backward compat)

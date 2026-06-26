@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 import { toast } from "sonner";
 import {
-  Upload, FileText, AlertCircle, ChevronDown, ChevronUp, Loader2,
+  Upload, FileText, AlertCircle, ChevronDown, ChevronUp, Loader2, Info,
 } from "lucide-react";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
@@ -14,12 +14,61 @@ import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
+import {
+  Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { useProcessDataset, useUploadDataset, type DatasetSummaryDetail } from "@/lib/hooks/use-datasets";
 
-const ACCEPTED = ".jsonl,.csv,.xlsx,.xls,.pdf,.txt,.docx,.doc,.json";
+const ACCEPTED     = ".jsonl,.csv,.xlsx,.xls,.pdf,.txt,.docx,.doc,.json";
 const ACCEPTED_SET = new Set([
   ".jsonl", ".csv", ".xlsx", ".xls", ".pdf", ".txt", ".docx", ".doc", ".json",
 ]);
+
+const FILE_FORMAT_TIPS: Record<string, string> = {
+  ".jsonl": "ChatML or instruction/response pairs — imported directly, no pipeline needed.",
+  ".csv":   "Spreadsheet rows. If columns are named 'instruction'/'response' (or similar), pairs are extracted automatically. Otherwise each row is serialized as text.",
+  ".xlsx":  "Same as CSV but Excel format.",
+  ".pdf":   "Pages are extracted as plain text and chunked into Q&A pairs using the 6-layer pipeline.",
+  ".txt":   "Plain text. Paragraphs are split, chunked, and converted to Q&A pairs.",
+  ".docx":  "Word document. Paragraphs are extracted, chunked, and converted to Q&A pairs.",
+  ".json":  "JSON array or object. Each item is treated as a row and processed through the pipeline.",
+};
+
+const SLIDER_TIPS = {
+  dedup: `Controls how similar two rows must be to be flagged as duplicates.
+• 0.50 = very aggressive — removes loosely similar rows
+• 0.85 = balanced (default) — only near-identical rows removed
+• 1.00 = disabled — keep all rows regardless of similarity
+Increase if you want to keep more data; decrease to strip repetition.`,
+
+  chunkSize: `For unstructured text (PDFs, articles, plain text), this is how many characters each piece is split into before Q&A pairs are generated.
+• Smaller (100–300) = more pairs, each narrow in scope
+• Larger (500–2000) = fewer pairs, each richer in context
+Has no effect on structured CSV / JSONL datasets.`,
+
+  chunkOverlap: `How many characters are shared between consecutive chunks to preserve context at boundaries.
+• 0 = no overlap — fully independent chunks
+• 50 = light (default) — smooth context handoff
+• 200 = heavy — more redundancy, fewer gaps
+Only applies when processing unstructured text.`,
+};
+
+function InfoTip({ tip }: { tip: string }) {
+  return (
+    <TooltipProvider delayDuration={200}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span className="inline-flex cursor-help text-muted-foreground hover:text-foreground">
+            <Info className="h-3 w-3" />
+          </span>
+        </TooltipTrigger>
+        <TooltipContent side="right" className="max-w-[230px] text-xs leading-relaxed whitespace-pre-line">
+          {tip}
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
+}
 
 function getExt(name: string) {
   return name.slice(name.lastIndexOf(".")).toLowerCase();
@@ -32,16 +81,15 @@ function formatBytes(bytes: number) {
 }
 
 const SCHEMA_LABELS: Record<string, string> = {
-  jsonl_messages:    "ChatML",
-  instruction:       "Instruction / Response",
-  chat_log:          "Chat Log",
-  unstructured_prose:"Prose → Q&A synthesis",
+  jsonl_messages:     "ChatML",
+  instruction:        "Instruction / Response",
+  chat_log:           "Chat Log",
+  unstructured_prose: "Prose → Q&A synthesis",
 };
 
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  /** Called with the pipeline result when processing finishes */
   onPipelineComplete?: (result: DatasetSummaryDetail) => void;
 }
 
@@ -61,8 +109,9 @@ export function UploadDatasetDialog({ open, onOpenChange, onPipelineComplete }: 
   const process = useProcessDataset();
   const upload  = useUploadDataset();
 
-  const isJsonl    = file ? getExt(file.name) === ".jsonl" : false;
-  const isPending  = process.isPending || upload.isPending;
+  const isJsonl   = file ? getExt(file.name) === ".jsonl" : false;
+  const isPending = process.isPending || upload.isPending;
+  const fileExt   = file ? getExt(file.name) : null;
 
   const validateAndSet = (f: File) => {
     setError(null);
@@ -79,7 +128,6 @@ export function UploadDatasetDialog({ open, onOpenChange, onPipelineComplete }: 
     setError(null);
 
     if (isJsonl) {
-      // Fast path: direct import, no pipeline
       upload.mutate(
         { file, filename: filename.trim() },
         {
@@ -91,7 +139,6 @@ export function UploadDatasetDialog({ open, onOpenChange, onPipelineComplete }: 
         }
       );
     } else {
-      // Full 6-layer pipeline
       process.mutate(
         {
           file,
@@ -160,6 +207,11 @@ export function UploadDatasetDialog({ open, onOpenChange, onPipelineComplete }: 
                 <FileText className="h-8 w-8 text-violet-400" />
                 <span className="text-sm font-medium">{file.name}</span>
                 <span className="text-xs text-muted-foreground">{formatBytes(file.size)}</span>
+                {fileExt && FILE_FORMAT_TIPS[fileExt] && (
+                  <p className="text-center text-[11px] text-muted-foreground max-w-[280px] leading-relaxed">
+                    {FILE_FORMAT_TIPS[fileExt]}
+                  </p>
+                )}
               </>
             ) : (
               <>
@@ -169,11 +221,23 @@ export function UploadDatasetDialog({ open, onOpenChange, onPipelineComplete }: 
                 </span>
                 <div className="flex flex-wrap justify-center gap-1">
                   {[".jsonl", ".csv", ".pdf", ".docx", ".txt", ".json", ".xlsx"].map((ext) => (
-                    <Badge key={ext} variant="secondary" className="text-xs font-mono">
-                      {ext}
-                    </Badge>
+                    <TooltipProvider key={ext} delayDuration={200}>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Badge variant="secondary" className="cursor-help text-xs font-mono">
+                            {ext}
+                          </Badge>
+                        </TooltipTrigger>
+                        <TooltipContent side="top" className="max-w-[200px] text-xs">
+                          {FILE_FORMAT_TIPS[ext] ?? ext}
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
                   ))}
                 </div>
+                <p className="text-[11px] text-muted-foreground text-center max-w-[280px]">
+                  Hover any format badge to learn how it's processed
+                </p>
               </>
             )}
           </div>
@@ -196,7 +260,7 @@ export function UploadDatasetDialog({ open, onOpenChange, onPipelineComplete }: 
               {isJsonl ? (
                 <span>⚡ <strong>Direct import</strong> — JSONL skips the pipeline</span>
               ) : (
-                <span>🔬 <strong>6-layer pipeline</strong> — cleans, deduplicates, and formats pairs</span>
+                <span>🔬 <strong>6-layer pipeline</strong> — cleans, deduplicates, removes junk/SQL, scrubs PII, and formats pairs</span>
               )}
             </div>
           )}
@@ -215,9 +279,13 @@ export function UploadDatasetDialog({ open, onOpenChange, onPipelineComplete }: 
 
               {showAdvanced && (
                 <div className="mt-3 flex flex-col gap-4 rounded-md border bg-muted/30 p-4">
+                  {/* Dedup threshold */}
                   <div className="flex flex-col gap-2">
                     <div className="flex items-center justify-between">
-                      <Label className="text-xs">Dedup threshold</Label>
+                      <div className="flex items-center gap-1.5">
+                        <Label className="text-xs">Dedup threshold</Label>
+                        <InfoTip tip={SLIDER_TIPS.dedup} />
+                      </div>
                       <span className="text-xs tabular-nums text-muted-foreground">
                         {dedupThreshold.toFixed(2)}
                       </span>
@@ -227,14 +295,24 @@ export function UploadDatasetDialog({ open, onOpenChange, onPipelineComplete }: 
                       value={[dedupThreshold]}
                       onValueChange={([v]) => setDedupThreshold(v)}
                     />
-                    <p className="text-xs text-muted-foreground">
-                      Rows ≥ this similar are flagged as duplicates (MinHash LSH)
+                    <p className="text-[10px] text-muted-foreground">
+                      {dedupThreshold >= 0.95
+                        ? "Very lenient — almost no deduplication"
+                        : dedupThreshold >= 0.85
+                        ? "Balanced — removes near-identical rows (recommended)"
+                        : dedupThreshold >= 0.70
+                        ? "Aggressive — removes loosely similar rows"
+                        : "Very aggressive — may remove valid similar content"}
                     </p>
                   </div>
 
+                  {/* Chunk size */}
                   <div className="flex flex-col gap-2">
                     <div className="flex items-center justify-between">
-                      <Label className="text-xs">Chunk size (tokens)</Label>
+                      <div className="flex items-center gap-1.5">
+                        <Label className="text-xs">Chunk size (chars)</Label>
+                        <InfoTip tip={SLIDER_TIPS.chunkSize} />
+                      </div>
                       <span className="text-xs tabular-nums text-muted-foreground">{chunkSize}</span>
                     </div>
                     <Slider
@@ -242,11 +320,22 @@ export function UploadDatasetDialog({ open, onOpenChange, onPipelineComplete }: 
                       value={[chunkSize]}
                       onValueChange={([v]) => setChunkSize(v)}
                     />
+                    <p className="text-[10px] text-muted-foreground">
+                      {chunkSize <= 200
+                        ? "Short chunks → more pairs, narrow scope"
+                        : chunkSize <= 600
+                        ? "Medium chunks → balanced (recommended for most docs)"
+                        : "Long chunks → fewer pairs, richer context per pair"}
+                    </p>
                   </div>
 
+                  {/* Chunk overlap */}
                   <div className="flex flex-col gap-2">
                     <div className="flex items-center justify-between">
-                      <Label className="text-xs">Chunk overlap</Label>
+                      <div className="flex items-center gap-1.5">
+                        <Label className="text-xs">Chunk overlap (chars)</Label>
+                        <InfoTip tip={SLIDER_TIPS.chunkOverlap} />
+                      </div>
                       <span className="text-xs tabular-nums text-muted-foreground">{chunkOverlap}</span>
                     </div>
                     <Slider
@@ -254,6 +343,13 @@ export function UploadDatasetDialog({ open, onOpenChange, onPipelineComplete }: 
                       value={[chunkOverlap]}
                       onValueChange={([v]) => setChunkOverlap(v)}
                     />
+                    <p className="text-[10px] text-muted-foreground">
+                      {chunkOverlap === 0
+                        ? "No overlap — fully independent chunks"
+                        : chunkOverlap <= 60
+                        ? "Light overlap — smooth context handoff (recommended)"
+                        : "Heavy overlap — more redundancy, fewer context gaps"}
+                    </p>
                   </div>
                 </div>
               )}
