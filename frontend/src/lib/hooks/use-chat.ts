@@ -7,10 +7,12 @@ import type { ChatConfig } from "@/lib/chat-config";
 
 export interface ChatMessage extends ConversationMessage {
   clientId: string;
+  modelName?: string;
 }
 
 interface UseChatOptions {
   modelId: string | null;
+  modelName?: string | null;
   conversationId: number | null;
   config: ChatConfig;
   onConversationReady: (id: number) => void;
@@ -19,6 +21,7 @@ interface UseChatOptions {
 
 export function useChat({
   modelId,
+  modelName,
   conversationId,
   config,
   onConversationReady,
@@ -71,6 +74,7 @@ export function useChat({
         clientId: crypto.randomUUID(),
         role: "assistant",
         content: "",
+        modelName: modelName ?? undefined,
       };
 
       setMessages((prev) => [...prev, userMsg, assistantPlaceholder]);
@@ -210,7 +214,7 @@ export function useChat({
         abortRef.current = null;
       }
     },
-    [modelId, isStreaming, messages, config, uploadFiles, onConversationReady, onDocumentsLoaded],
+    [modelId, modelName, isStreaming, messages, config, uploadFiles, onConversationReady, onDocumentsLoaded],
   );
 
   const stopStreaming = useCallback(() => {
@@ -253,7 +257,11 @@ export function useChat({
         }
 
         const msgs: ConversationMessage[] = await msgRes.json();
-        setMessages(msgs.map((m) => ({ ...m, clientId: crypto.randomUUID() })));
+        setMessages(msgs.map((m) => ({
+          ...m,
+          clientId: crypto.randomUUID(),
+          modelName: modelName ?? undefined,
+        })));
 
         if (docRes.ok) {
           const docData = await docRes.json();

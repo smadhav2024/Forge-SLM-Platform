@@ -94,6 +94,7 @@ class DocumentVector(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     conversation_id = Column(Integer, ForeignKey("conversations.id", ondelete="CASCADE"), nullable=False)
+    source_filename = Column(String, nullable=True)
     text_chunk = Column(Text, nullable=False)
     embedding_matrix = Column(Vector(384), nullable=False)
 
