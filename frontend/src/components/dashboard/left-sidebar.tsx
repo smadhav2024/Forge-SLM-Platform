@@ -67,7 +67,7 @@ export function LeftSidebar({
   const handleNewChat = async () => {
     try {
       const conv = await createMutation.mutateAsync({ model_id: undefined, session_title: "New Chat" });
-      const id = (conv as any)?.conversation_id ?? (conv as any)?.id ?? conv?.id;
+      const id = (conv as any)?.conversation_id ?? (conv as any)?.id ?? conv?.conversation_id;
       if (id) router.push(`/dashboard?conversation=${id}`);
       else router.push("/dashboard");
     } catch (err) {
