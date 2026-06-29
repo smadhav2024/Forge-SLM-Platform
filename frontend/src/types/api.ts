@@ -92,7 +92,7 @@ export interface ConversationMessage {
 }
 
 export interface CreateConversationRequest {
-  model_id: number;
+  model_id: undefined;
   session_title: string;
 }
 
