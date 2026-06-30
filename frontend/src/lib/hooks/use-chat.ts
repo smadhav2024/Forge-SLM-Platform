@@ -58,17 +58,34 @@ export function useChat({
         `/api/conversations/${convId}/documents?chunk_size=${chunkSize}&chunk_overlap=${chunkOverlap}`,
         { method: "POST", body: form }
       );
+      const body = await res.json().catch(() => ({}));
       if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
         throw new Error(body?.message ?? `Upload failed: ${res.status}`);
       }
+      return body as { chunk_count?: number; filename?: string };
     },
     []
   );
 
   const uploadFiles = useCallback(
     async (convId: number, files: File[], chunkSize: number, chunkOverlap: number) => {
-      await Promise.all(files.map((f) => uploadFile(convId, f, chunkSize, chunkOverlap)));
+      const results = await Promise.all(
+        files.map((f) => uploadFile(convId, f, chunkSize, chunkOverlap))
+      );
+      // A very small chunk count for a real document usually means extraction
+      // dropped most of the content (e.g. a multi-column PDF where only a
+      // sidebar got picked up) rather than the file genuinely being that
+      // short — surface it so it's obvious immediately instead of only
+      // showing up later as "the model doesn't seem to know X".
+      results.forEach((r, i) => {
+        if (typeof r.chunk_count === "number" && r.chunk_count <= 1) {
+          toast.warning(
+            `"${files[i].name}" only produced ${r.chunk_count} chunk${r.chunk_count === 1 ? "" : "s"}. ` +
+              "If this looks too small for the document, the extraction may have missed content " +
+              "(common with multi-column PDFs) — try re-exporting it as a single-column PDF or plain text."
+          );
+        }
+      });
     },
     [uploadFile]
   );

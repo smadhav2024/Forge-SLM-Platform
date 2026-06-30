@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { MessageList } from "@/components/playground/message-list";
 import { ChatInput } from "@/components/playground/chat-input";
@@ -122,7 +123,14 @@ export function ChatWorkspace() {
 
     registerRagHandlers({
       uploadFile: async (file: File, chunkSize: number, chunkOverlap: number) => {
-        await uploadFile(conversationId, file, chunkSize, chunkOverlap);
+        const result = await uploadFile(conversationId, file, chunkSize, chunkOverlap);
+        if (typeof result.chunk_count === "number" && result.chunk_count <= 1) {
+          toast.warning(
+            `"${file.name}" only produced ${result.chunk_count} chunk${result.chunk_count === 1 ? "" : "s"}. ` +
+              "If this looks too small for the document, the extraction may have missed content " +
+              "(common with multi-column PDFs) — try re-exporting it as a single-column PDF or plain text."
+          );
+        }
         const res = await fetch(`/api/conversations/${conversationId}/documents`);
         if (res.ok) {
           const data = await res.json();
