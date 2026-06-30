@@ -258,6 +258,36 @@ def extract_markdown(file_path: str) -> str:
         # into chunks.
         markdown_text = pymupdf4llm.to_markdown(file_path)
 
+        # pymupdf4llm's layout reconstruction can silently drop entire
+        # columns or text blocks on multi-column / sidebar-style layouts
+        # (common in resumes: a name+contact sidebar next to a main content
+        # column, or a banner header above body text). When that happens,
+        # extract_markdown still returns *something* non-empty (e.g. just
+        # the sidebar), so the "no text extracted" check downstream never
+        # fires, and only a fragment of the document ever gets chunked and
+        # embedded — which looks identical to a successful, complete upload.
+        #
+        # Cross-check against PyMuPDF's plain per-page text extraction
+        # (layout-agnostic, so it doesn't have the same column-dropping
+        # failure mode) and fall back to it whenever the structured markdown
+        # came out suspiciously shorter than the raw page text, since that's
+        # a strong signal that pymupdf4llm dropped content rather than the
+        # page genuinely being mostly whitespace/images.
+        try:
+            with fitz.open(file_path) as raw_doc:
+                raw_text = "\n\n".join(page.get_text("text") for page in raw_doc)
+        except Exception:
+            raw_text = ""
+
+        if raw_text.strip() and len(markdown_text.strip()) < len(raw_text.strip()) * 0.6:
+            print(
+                "SYSTEM WARNING: pymupdf4llm markdown output "
+                f"({len(markdown_text.strip())} chars) looks substantially shorter than "
+                f"raw page text ({len(raw_text.strip())} chars) — likely dropped a column "
+                "or text block. Falling back to plain text extraction for this file."
+            )
+            markdown_text = raw_text
+
     elif header.startswith(b"PK"):
         # ZIP signature -> DOCX. Reconstruct a light markdown structure so the
         # same heading/table-aware chunker applies uniformly.
