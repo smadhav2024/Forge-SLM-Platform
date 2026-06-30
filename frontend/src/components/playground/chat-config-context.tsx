@@ -2,7 +2,13 @@
 
 import { createContext, useContext, useState, useCallback, useRef, useEffect } from "react";
 import { toast } from "sonner";
-import { ChatConfig, DEFAULT_CHAT_CONFIG } from "@/lib/chat-config";
+import {
+  ChatConfig,
+  DEFAULT_CHAT_CONFIG,
+  RagConfig,
+  DEFAULT_RAG_CONFIG,
+  RAG_STORAGE_KEY,
+} from "@/lib/chat-config";
 
 const CONFIG_STORAGE_KEY = "forge_chat_config";
 
@@ -17,8 +23,19 @@ function loadPersistedConfig(): ChatConfig {
   }
 }
 
+function loadPersistedRagConfig(): RagConfig {
+  if (typeof window === "undefined") return DEFAULT_RAG_CONFIG;
+  try {
+    const raw = localStorage.getItem(RAG_STORAGE_KEY);
+    if (!raw) return DEFAULT_RAG_CONFIG;
+    return { ...DEFAULT_RAG_CONFIG, ...JSON.parse(raw) };
+  } catch {
+    return DEFAULT_RAG_CONFIG;
+  }
+}
+
 export interface RagHandlers {
-  uploadFile: (file: File) => Promise<void>;
+  uploadFile: (file: File, chunkSize: number, chunkOverlap: number) => Promise<void>;
   clearDocuments: () => Promise<void>;
 }
 
@@ -27,19 +44,22 @@ interface ChatConfigContextValue {
   setConfig: (config: ChatConfig) => void;
   updateConfig: (patch: Partial<ChatConfig>) => void;
 
+  ragConfig: RagConfig;
+  updateRagConfig: (patch: Partial<RagConfig>) => void;
+
   isSidebarOpen: boolean;
   setSidebarOpen: (open: boolean) => void;
 
   // RAG — read by RightSidebar
-  uploadedFileNames: string[];    // persisted names fetched from server on conv load
-  pendingFiles: File[];           // files queued before a conv exists
+  uploadedFileNames: string[];
+  pendingFiles: File[];
   isUploadingDoc: boolean;
   hasUploadedDocs: boolean;
   onFileSelected: (file: File) => void;
   onClearDocuments: () => void;
-  // Called by ChatWorkspace to restore filenames after loading a historical conversation
   setUploadedFileNames: (names: string[]) => void;
   setHasUploadedDocs: (v: boolean) => void;
+  clearPendingFiles: () => void;
 
   registerRagHandlers: (handlers: RagHandlers | null) => void;
 }
@@ -48,6 +68,7 @@ const ChatConfigContext = createContext<ChatConfigContextValue | null>(null);
 
 export function ChatConfigProvider({ children }: { children: React.ReactNode }) {
   const [config, setConfigState] = useState<ChatConfig>(loadPersistedConfig);
+  const [ragConfig, setRagConfigState] = useState<RagConfig>(loadPersistedRagConfig);
   const [isSidebarOpen, setSidebarOpen] = useState(true);
 
   const [uploadedFileNames, setUploadedFileNames] = useState<string[]>([]);
@@ -56,8 +77,13 @@ export function ChatConfigProvider({ children }: { children: React.ReactNode }) 
   const [hasUploadedDocs, setHasUploadedDocs] = useState(false);
 
   const ragHandlersRef = useRef<RagHandlers | null>(null);
+  // Ref so onFileSelected always reads the latest ragConfig without re-creating the callback
+  const ragConfigRef = useRef<RagConfig>(ragConfig);
+  useEffect(() => {
+    ragConfigRef.current = ragConfig;
+  }, [ragConfig]);
 
-  // Persist config changes to localStorage
+  // ── Chat config ────────────────────────────────────────────────────────────
   const setConfig = useCallback((c: ChatConfig) => {
     setConfigState(c);
     try { localStorage.setItem(CONFIG_STORAGE_KEY, JSON.stringify(c)); } catch {}
@@ -71,17 +97,33 @@ export function ChatConfigProvider({ children }: { children: React.ReactNode }) 
     });
   }, []);
 
+  // ── RAG config ─────────────────────────────────────────────────────────────
+  const updateRagConfig = useCallback((patch: Partial<RagConfig>) => {
+    setRagConfigState((prev) => {
+      const next = { ...prev, ...patch };
+      ragConfigRef.current = next;
+      try { localStorage.setItem(RAG_STORAGE_KEY, JSON.stringify(next)); } catch {}
+      return next;
+    });
+  }, []);
+
+  const clearPendingFiles = useCallback(() => {
+    setPendingFiles([]);
+  }, []);
+
+  // ── RAG handlers ───────────────────────────────────────────────────────────
   const registerRagHandlers = useCallback((handlers: RagHandlers | null) => {
     ragHandlersRef.current = handlers;
   }, []);
 
   const onFileSelected = useCallback(async (file: File) => {
+    const { chunkSize, chunkOverlap } = ragConfigRef.current;
+
     if (ragHandlersRef.current) {
-      // Conversation exists — upload immediately
       setPendingFiles((p) => [...p, file]);
       setIsUploadingDoc(true);
       try {
-        await ragHandlersRef.current.uploadFile(file);
+        await ragHandlersRef.current.uploadFile(file, chunkSize, chunkOverlap);
         setUploadedFileNames((p) => [...p, file.name]);
         setHasUploadedDocs(true);
       } catch {
@@ -91,7 +133,7 @@ export function ChatConfigProvider({ children }: { children: React.ReactNode }) 
         setIsUploadingDoc(false);
       }
     } else {
-      // No conversation yet — queue; ChatWorkspace flushes these on first send
+      // No conversation yet — queue; ChatWorkspace flushes on first send
       setPendingFiles((p) => [...p, file]);
     }
   }, []);
@@ -113,6 +155,8 @@ export function ChatConfigProvider({ children }: { children: React.ReactNode }) 
         config,
         setConfig,
         updateConfig,
+        ragConfig,
+        updateRagConfig,
         isSidebarOpen,
         setSidebarOpen,
         uploadedFileNames,
@@ -123,6 +167,7 @@ export function ChatConfigProvider({ children }: { children: React.ReactNode }) 
         onClearDocuments,
         setUploadedFileNames,
         setHasUploadedDocs,
+        clearPendingFiles,
         registerRagHandlers,
       }}
     >

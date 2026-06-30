@@ -3,7 +3,7 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { toast } from "sonner";
 import type { ConversationMessage } from "@/types/api";
-import type { ChatConfig } from "@/lib/chat-config";
+import type { ChatConfig, RagConfig } from "@/lib/chat-config";
 
 export interface ChatMessage extends ConversationMessage {
   clientId: string;
@@ -13,16 +13,21 @@ interface UseChatOptions {
   modelId: string | null;
   conversationId: number | null;
   config: ChatConfig;
+  ragConfig: RagConfig;
   onConversationReady: (id: number) => void;
   onDocumentsLoaded: (filenames: string[], hasDocuments: boolean) => void;
+  /** Called after pending files are successfully uploaded so the caller can clear the queue. */
+  onPendingFilesUploaded?: () => void;
 }
 
 export function useChat({
   modelId,
   conversationId,
   config,
+  ragConfig,
   onConversationReady,
   onDocumentsLoaded,
+  onPendingFilesUploaded,
 }: UseChatOptions) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
@@ -30,34 +35,46 @@ export function useChat({
   const prevConversationIdRef = useRef<number | null>(null);
   const conversationIdRef = useRef<number | null>(conversationId);
 
+  // Keep a ref to messages so sendMessage doesn't need it as a dep (avoids stale-closure
+  // re-creation on every incoming token while streaming).
+  const messagesRef = useRef<ChatMessage[]>(messages);
+  useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
+
   useEffect(() => {
     conversationIdRef.current = conversationId;
   }, [conversationId]);
 
-  const uploadFile = useCallback(async (convId: number, file: File) => {
-    const form = new FormData();
-    form.append("file", file);
-    const res = await fetch(`/api/conversations/${convId}/documents`, {
-      method: "POST",
-      body: form,
-    });
-    if (!res.ok) {
-      const body = await res.json().catch(() => ({}));
-      throw new Error(body?.message ?? `Upload failed: ${res.status}`);
-    }
-  }, []);
+  // ── File upload ────────────────────────────────────────────────────────────
+  const uploadFile = useCallback(
+    async (convId: number, file: File, chunkSize = 500, chunkOverlap = 50) => {
+      const form = new FormData();
+      form.append("file", file);
+      const res = await fetch(
+        `/api/conversations/${convId}/documents?chunk_size=${chunkSize}&chunk_overlap=${chunkOverlap}`,
+        { method: "POST", body: form }
+      );
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body?.message ?? `Upload failed: ${res.status}`);
+      }
+    },
+    []
+  );
 
   const uploadFiles = useCallback(
-    async (convId: number, files: File[]) => {
-      await Promise.all(files.map((f) => uploadFile(convId, f)));
+    async (convId: number, files: File[], chunkSize: number, chunkOverlap: number) => {
+      await Promise.all(files.map((f) => uploadFile(convId, f, chunkSize, chunkOverlap)));
     },
-    [uploadFile],
+    [uploadFile]
   );
 
   const clearDocuments = useCallback(async (convId: number) => {
     await fetch(`/api/conversations/${convId}/documents`, { method: "DELETE" });
   }, []);
 
+  // ── Send ───────────────────────────────────────────────────────────────────
   const sendMessage = useCallback(
     async (text: string, pendingFiles: File[] = []) => {
       if (!modelId || isStreaming) return;
@@ -104,9 +121,18 @@ export function useChat({
           }
         }
 
+        // Upload any queued files then clear the pending queue.
         if (pendingFiles.length > 0 && activeConvId) {
           try {
-            await uploadFiles(activeConvId, pendingFiles);
+            await uploadFiles(
+              activeConvId,
+              pendingFiles,
+              ragConfig.chunkSize,
+              ragConfig.chunkOverlap
+            );
+            // Signal the caller to clear the pending-files queue now that the POST succeeded.
+            onPendingFilesUploaded?.();
+
             const docRes = await fetch(`/api/conversations/${activeConvId}/documents`);
             if (docRes.ok) {
               const docData = await docRes.json();
@@ -117,8 +143,11 @@ export function useChat({
           }
         }
 
+        // Build message history from the ref (not state) to avoid a stale-closure dep.
         const allMessages = [
-          ...messages.map(({ role, content }) => ({ role, content })),
+          ...messagesRef.current
+            .slice(0, -2) // exclude the optimistic pair we just added
+            .map(({ role, content }) => ({ role, content })),
           { role: "user" as const, content: text },
         ];
 
@@ -135,6 +164,9 @@ export function useChat({
             temperature: config.temperature,
             top_p: config.topP,
             max_tokens: config.maxTokens,
+            top_k: ragConfig.topK,
+            similarity_threshold: ragConfig.similarityThreshold,
+            context_budget: ragConfig.contextBudget,
           }),
         });
 
@@ -210,13 +242,15 @@ export function useChat({
         abortRef.current = null;
       }
     },
-    [modelId, isStreaming, messages, config, uploadFiles, onConversationReady, onDocumentsLoaded],
+    // messages intentionally excluded — accessed via messagesRef to prevent recreation on every token.
+    [modelId, isStreaming, config, ragConfig, uploadFiles, onConversationReady, onDocumentsLoaded, onPendingFilesUploaded] // eslint-disable-line react-hooks/exhaustive-deps
   );
 
   const stopStreaming = useCallback(() => {
     abortRef.current?.abort();
   }, []);
 
+  // ── Load conversation ──────────────────────────────────────────────────────
   useEffect(() => {
     if (!conversationId) {
       setMessages([]);

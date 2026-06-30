@@ -51,16 +51,17 @@ export function ChatWorkspace() {
 
   const {
     config,
+    ragConfig,
     pendingFiles,
     onFileSelected,
     registerRagHandlers,
     setUploadedFileNames,
     setHasUploadedDocs,
+    clearPendingFiles,
   } = useChatConfig();
 
   const queryClient = useQueryClient();
 
-  // Callback: called by useChat when messages+docs finish loading for a conversation
   const handleDocumentsLoaded = useCallback(
     (filenames: string[], hasDocuments: boolean) => {
       setUploadedFileNames(filenames);
@@ -80,6 +81,7 @@ export function ChatWorkspace() {
     modelId,
     conversationId,
     config,
+    ragConfig,
     onConversationReady: (id) => {
       setConversationId(id);
       queryClient.invalidateQueries({ queryKey: ["conversations"] });
@@ -95,9 +97,8 @@ export function ChatWorkspace() {
     }
 
     registerRagHandlers({
-      uploadFile: async (file: File) => {
-        await uploadFile(conversationId, file);
-        // Refresh filenames from server after upload
+      uploadFile: async (file: File, chunkSize: number, chunkOverlap: number) => {
+        await uploadFile(conversationId, file, chunkSize, chunkOverlap);
         const res = await fetch(`/api/conversations/${conversationId}/documents`);
         if (res.ok) {
           const data = await res.json();
@@ -115,9 +116,11 @@ export function ChatWorkspace() {
 
   const handleSend = useCallback(
     (text: string) => {
+      // Clear queued files immediately so they aren't re-sent on next message
+      clearPendingFiles();
       sendMessage(text, pendingFiles);
     },
-    [sendMessage, pendingFiles],
+    [sendMessage, pendingFiles, clearPendingFiles],
   );
 
   return (

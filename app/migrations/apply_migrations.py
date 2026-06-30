@@ -103,6 +103,11 @@ async def apply():
                 );
             """))
 
+            # ── Document vectors: source_filename ──────────────────────────
+            await db.execute(text(
+                "ALTER TABLE document_vectors ADD COLUMN IF NOT EXISTS source_filename VARCHAR;"
+            ))
+
             await db.commit()
             print("MIGRATION: All schema changes applied successfully.")
 

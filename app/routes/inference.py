@@ -130,6 +130,10 @@ class ChatCompletionRequest(BaseModel):
     max_tokens: int = Field(default=512, ge=1, le=4096)
     stream: bool = False
     conversation_id: int | None = None
+    # RAG retrieval params
+    top_k: int = Field(default=3, ge=1, le=10)
+    similarity_threshold: float = Field(default=0.0, ge=0.0, le=1.0)
+    context_budget: int = Field(default=1500, ge=200, le=4000)
 
 
 # ── Helpers (unchanged from original) ─────────────────────────────────────────
@@ -154,19 +158,45 @@ async def prepare_rag_and_messages(
         await db.commit()
 
         query_vector = list(embedding_model.embed([last_user_msg]))[0].tolist()
+
+        # Fetch top_k chunks WITH cosine distance so we can apply similarity_threshold
         rag_sql = text("""
-            SELECT text_chunk FROM document_vectors
+            SELECT text_chunk, (embedding_matrix <=> CAST(:emb AS vector)) AS distance
+            FROM document_vectors
             WHERE conversation_id = :conv_id
-            ORDER BY embedding_matrix <=> CAST(:emb AS vector) LIMIT 3
+            ORDER BY distance ASC
+            LIMIT :top_k
         """)
         rag_result = await db.execute(
             rag_sql,
-            {"conv_id": request.conversation_id, "emb": str(query_vector)},
+            {
+                "conv_id": request.conversation_id,
+                "emb": str(query_vector),
+                "top_k": request.top_k,
+            },
         )
-        context_chunks = [row[0] for row in rag_result.fetchall()]
+        rows = rag_result.fetchall()
+
+        # cosine distance → similarity; filter below threshold (0 = disabled)
+        context_chunks = []
+        for text_chunk, distance in rows:
+            similarity = 1.0 - float(distance)
+            if request.similarity_threshold > 0.0 and similarity < request.similarity_threshold:
+                continue
+            context_chunks.append(text_chunk)
+
         if context_chunks:
-            context_str = "\n".join(context_chunks)
-            base_system += f"\n\nContext Information:\n{context_str}\n\nUse the context above to answer."
+            # Join and truncate to context_budget at a word boundary
+            raw_context = "\n\n".join(context_chunks)
+            if len(raw_context) > request.context_budget:
+                truncated = raw_context[: request.context_budget]
+                last_space = truncated.rfind(" ")
+                raw_context = truncated[:last_space] if last_space > 0 else truncated
+
+            base_system += (
+                f"\n\nContext Information:\n{raw_context}"
+                "\n\nUse the context above to answer the user's question."
+            )
 
     messages_payload.insert(0, {"role": "system", "content": base_system})
     return messages_payload
