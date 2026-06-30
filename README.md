@@ -170,20 +170,6 @@ A typical fine-tuning job:
 
 This means the full loop — raw data in, fine-tuned model out, serving through the same OpenAI-compatible gateway — happens entirely within Forge.
 
-## Security Notes
-
-- Passwords are capped at 72 characters and hashed with bcrypt.
-- API gateway traffic is screened for PII prior to inference, and the same scrubbing is applied to uploaded training data before it's used for fine-tuning.
-- Forge is designed for self-hosted, trusted-network use; it does not ship with rate limiting or WAF-level protections out of the box, so plan accordingly if exposing it publicly.
-
-## Contributing
-
-Issues and pull requests are welcome. Before submitting a PR:
-
 - Keep backend changes consistent with the existing async SQLAlchemy patterns.
 - Run any new endpoints through the existing four-stage gateway pipeline rather than bypassing it.
 - Match the existing shadcn/ui + Tailwind conventions on the frontend.
-
-## License
-
-Add your license here.
